@@ -55,18 +55,38 @@ export const auth = betterAuth({
       allowUserToCreateOrganization: false,
       creatorRole: "department_head",
       membershipLimit: 5000,
+      // Membership changes made through the plugin endpoints are published to the outbox; the
+      // grants subscriber (src/platform/audit/subscribers.ts) derives the department grants.
       organizationHooks: {
         afterAddMember: async ({ member }) => {
-          const { syncMemberGrants } = await import("../../platform/identity/derive");
-          await syncMemberGrants(member.userId, member.organizationId);
+          const { publish } = await import("../../platform/audit/outbox");
+          await publish(
+            prismaRoot,
+            "member.changed",
+            { subjectType: "user", subjectId: member.userId },
+            { userId: member.userId, organizationId: member.organizationId },
+            { departmentId: null },
+          );
         },
         afterUpdateMemberRole: async ({ member }) => {
-          const { syncMemberGrants } = await import("../../platform/identity/derive");
-          await syncMemberGrants(member.userId, member.organizationId);
+          const { publish } = await import("../../platform/audit/outbox");
+          await publish(
+            prismaRoot,
+            "member.changed",
+            { subjectType: "user", subjectId: member.userId },
+            { userId: member.userId, organizationId: member.organizationId },
+            { departmentId: null },
+          );
         },
         afterRemoveMember: async ({ member }) => {
-          const { syncMemberGrants } = await import("../../platform/identity/derive");
-          await syncMemberGrants(member.userId, member.organizationId);
+          const { publish } = await import("../../platform/audit/outbox");
+          await publish(
+            prismaRoot,
+            "member.removed",
+            { subjectType: "user", subjectId: member.userId },
+            { userId: member.userId, organizationId: member.organizationId },
+            { departmentId: null },
+          );
         },
       },
     }),

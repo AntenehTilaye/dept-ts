@@ -5,6 +5,8 @@ import { randomUUID } from "node:crypto";
 import { auth } from "./auth";
 import { parseMemberRoles, type OrgRoleKey, type RoleKey } from "./access";
 import { prismaRoot } from "../db/prisma";
+import { withTenantTx } from "../db/tenant";
+import { record } from "@/platform/audit/record";
 import { can, type Actor, type SubjectRef } from "@/platform/identity/can";
 import type { ActionVerb, PermissionLevelKey } from "@/platform/identity/levels";
 import { dbPolicyStore } from "@/platform/identity/policy-store";
@@ -133,6 +135,19 @@ export async function requireCan(
   verb?: ActionVerb,
 ): Promise<CanResult> {
   const decision = await canDo(ctx, permissionKey, subject, verb);
-  if (!decision.allowed) throw new ForbiddenError(`${permissionKey}: ${decision.reason}`);
+  if (!decision.allowed) {
+    await withTenantTx(ctx.departmentId, (tx) =>
+      record(tx, {
+        action: "denied",
+        subjectType: subject?.subjectType ?? "department",
+        subjectId: subject?.subjectId ?? ctx.departmentId,
+        departmentId: ctx.departmentId,
+        actorUserId: ctx.user.id,
+        correlationId: ctx.correlationId,
+        reason: `${permissionKey}: ${decision.reason}`,
+      }),
+    ).catch((error) => console.error("[audit] denied record failed", error));
+    throw new ForbiddenError(`${permissionKey}: ${decision.reason}`);
+  }
   return decision;
 }

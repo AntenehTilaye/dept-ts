@@ -45,6 +45,11 @@ model Department {
   enrollments         Enrollment[]
   timetableSlots      ClassTimetableSlot[]
   resources           Resource[]
+  workflowDefinitions WorkflowDefinition[]
+  workflowInstances   WorkflowInstance[]
+  transitionLogs      WorkflowTransitionLog[]
+  auditEvents         AuditEvent[]
+  domainEvents        DomainEvent[]
 
   @@map("department")
 }

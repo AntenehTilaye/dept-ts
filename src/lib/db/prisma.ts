@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
+import { auditExtension } from "@/platform/audit/interceptor";
 
 // The one unscoped Prisma client per process, connected as the runtime role dept_app
 // (NOBYPASSRLS). Tenant-scoped access goes through src/lib/db/scoped.ts and tenant.ts;
@@ -25,7 +26,8 @@ function createClient(schema: string): PrismaClient {
       schema,
     },
   );
-  return new PrismaClient({ adapter });
+  // The audit interceptor is part of the root client so every write path is covered.
+  return new PrismaClient({ adapter }).$extends(auditExtension) as unknown as PrismaClient;
 }
 
 const globalForPrisma = globalThis as unknown as {

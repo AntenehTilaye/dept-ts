@@ -1,5 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { runWithAudit } from "@/platform/audit/context";
 import { prismaRoot } from "./prisma";
+import { globalSingleton } from "../singleton";
 
 // Transaction helpers around the two RLS settings.
 //   withTenantTx     - one transaction with `app.current_department_id` set once at the start
@@ -26,7 +28,8 @@ export async function withTenantTx<T>(
   return prismaRoot.$transaction(
     async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.current_department_id', ${departmentId}, true)`;
-      return fn(tx);
+      // awaited inside the scope so lazily executed Prisma promises see the context
+      return runWithAudit({ tx, departmentId, bypass: false }, async () => await fn(tx));
     },
     { maxWait: 5_000, timeout: 15_000, ...opts },
   );
@@ -34,14 +37,16 @@ export async function withTenantTx<T>(
 
 export type BypassAuditor = (tx: TxClient, actor: BypassActor, reason: string) => Promise<void>;
 
-let auditor: BypassAuditor = async (_tx, actor, reason) => {
-  const who = "worker" in actor ? `job:${actor.jobName}` : `user:${actor.user.id}`;
-  console.warn(`[tenant-bypass] ${who}: ${reason}`);
-};
+const auditorHolder = globalSingleton("bypass-auditor", () => ({
+  fn: (async (_tx, actor, reason) => {
+    const who = "worker" in actor ? `job:${actor.jobName}` : `user:${actor.user.id}`;
+    console.warn(`[tenant-bypass] ${who}: ${reason}`);
+  }) as BypassAuditor,
+}));
 
 /** The audit phase registers the AuditEvent writer here. */
 export function setBypassAuditor(fn: BypassAuditor): void {
-  auditor = fn;
+  auditorHolder.fn = fn;
 }
 
 export async function withTenantBypass<T>(
@@ -53,8 +58,11 @@ export async function withTenantBypass<T>(
   return prismaRoot.$transaction(
     async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.tenant_bypass', 'on', true)`;
-      await auditor(tx, actor, reason);
-      return fn(tx);
+      const actorUserId = "user" in actor ? actor.user.id : null;
+      return runWithAudit({ tx, bypass: true, actorUserId }, async () => {
+        await auditorHolder.fn(tx, actor, reason);
+        return await fn(tx);
+      });
     },
     { maxWait: 5_000, timeout: 15_000, ...opts },
   );
