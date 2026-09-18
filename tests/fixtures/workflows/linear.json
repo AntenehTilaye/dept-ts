@@ -1,0 +1,68 @@
+{
+  "key": "test.linear",
+  "subjectType": "task",
+  "initialState": "draft",
+  "states": [
+    { "key": "draft", "label": "Draft", "category": "initial" },
+    { "key": "in_progress", "label": "In progress", "category": "active", "slaHours": 48 },
+    { "key": "review", "label": "Under review", "category": "waiting" },
+    { "key": "done", "label": "Done", "category": "terminal", "terminalCategory": "success" },
+    {
+      "key": "cancelled",
+      "label": "Cancelled",
+      "category": "terminal",
+      "terminalCategory": "cancelled"
+    }
+  ],
+  "transitions": [
+    {
+      "key": "draft.start",
+      "from": "draft",
+      "to": "in_progress",
+      "action": "start",
+      "requiredPermission": "task.act",
+      "effects": [{ "kind": "emit", "args": { "name": "task.started" } }]
+    },
+    {
+      "key": "in_progress.submit",
+      "from": "in_progress",
+      "to": "review",
+      "action": "submit",
+      "requiredPermission": "task.act",
+      "requiredFields": ["summary"],
+      "guards": ["always"]
+    },
+    {
+      "key": "review.approve",
+      "from": "review",
+      "to": "done",
+      "action": "approve",
+      "requiredPermission": "task.manage",
+      "requiredComment": true,
+      "effects": [{ "kind": "notify", "args": { "templateKey": "task.approved" } }]
+    },
+    {
+      "key": "review.revise",
+      "from": "review",
+      "to": "in_progress",
+      "action": "revise",
+      "requiredPermission": "task.manage",
+      "requiredComment": true
+    },
+    {
+      "key": "draft.cancel",
+      "from": "draft",
+      "to": "cancelled",
+      "action": "cancel",
+      "requiredPermission": "task.manage"
+    },
+    {
+      "key": "in_progress.cancel",
+      "from": "in_progress",
+      "to": "cancelled",
+      "action": "cancel",
+      "requiredPermission": "task.manage",
+      "guards": ["never"]
+    }
+  ]
+}

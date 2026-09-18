@@ -12,6 +12,7 @@ import {
 // (database-backed in src/lib/auth, in-memory in unit tests) and subject context from an
 // injected SubjectResolver (the SubjectRegistry from the registry phase on).
 
+import { globalSingleton } from "../../lib/singleton";
 import type { SubjectContext, SubjectRef } from "../subject-registry/types";
 
 export type { SubjectContext, SubjectRef };
@@ -80,15 +81,17 @@ const nullResolver: SubjectResolver = {
   },
 };
 
-let resolver: SubjectResolver = nullResolver;
+const resolverHolder = globalSingleton("subject-resolver", () => ({
+  current: nullResolver as SubjectResolver,
+}));
 
 /** The registry phase installs the real SubjectRegistry here. */
 export function setSubjectResolver(next: SubjectResolver): void {
-  resolver = next;
+  resolverHolder.current = next;
 }
 
 /** Feature presets register `{prefix}.{action}` -> generic key fallbacks (evaluation.close -> campaign.manage). */
-const fallbacks = new Map<string, string>();
+const fallbacks = globalSingleton("permission-fallbacks", () => new Map<string, string>());
 
 export function registerPermissionFallback(prefix: string, genericKey: string): void {
   fallbacks.set(prefix, genericKey);
@@ -139,7 +142,9 @@ export async function can(
       return { allowed: false, level: "none", reason: `explicit deny for ${g.roleKey}` };
 
   // 2. which grants apply: department-wide always; scoped ones only inside the subject's context
-  const context = subjectRef ? await resolver.contextOf(subjectRef, actor.departmentId) : {};
+  const context = subjectRef
+    ? await resolverHolder.current.contextOf(subjectRef, actor.departmentId)
+    : {};
   if (subjectRef && context.departmentId && context.departmentId !== actor.departmentId) {
     return { allowed: false, level: "none", reason: "subject belongs to another department" };
   }
@@ -166,7 +171,7 @@ export async function can(
       ok = true; // scoped grant already proves membership
     else if (subjectRef) {
       rels ??= new Set(
-        await resolver.relationships(subjectRef, actor.personId, actor.departmentId),
+        await resolverHolder.current.relationships(subjectRef, actor.personId, actor.departmentId),
       );
       ok = relationshipSatisfies(level, rels);
     }

@@ -13,4 +13,14 @@ export const jsonSchemas: Record<string, ZodType> = {
     )
     .length(4),
   "Resource.attributesJson": z.record(z.string(), z.unknown()),
+  "WorkflowDefinition.statesJson": z.array(z.record(z.string(), z.unknown())),
+  "WorkflowDefinition.transitionsJson": z.array(z.record(z.string(), z.unknown())),
+  "WorkflowDefinition.lockedPathsJson": z.array(z.string()),
+  "WorkflowInstance.branchStates": z.record(z.string(), z.unknown()).nullable(),
+  "WorkflowTransitionLog.payloadJson": z.unknown(),
+  "AuditEvent.fieldChangesJson": z
+    .record(z.string(), z.object({ before: z.unknown(), after: z.unknown() }))
+    .nullable(),
+  "AuditEvent.clientInfoJson": z.record(z.string(), z.unknown()).nullable(),
+  "DomainEvent.payloadJson": z.unknown(),
 };

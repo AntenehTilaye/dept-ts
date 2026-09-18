@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { safeAction } from "@/lib/actions/safe-action";
 import { formToObject } from "@/lib/actions/form";
-import { ensurePerson, attachToDepartment } from "@/platform/people/persons";
+import { ensurePerson, attachToDepartment, updatePerson } from "@/platform/people/persons";
 import { upsertProfileItem, upsertStaffProfile } from "@/platform/people/staff";
 import { upsertStudent } from "@/platform/people/students";
 
@@ -82,4 +82,31 @@ export async function createPersonForm(fd: FormData) {
 }
 export async function addProfileItemForm(fd: FormData) {
   return addProfileItemAction(formToObject(fd));
+}
+
+export const renamePersonAction = safeAction(
+  z.object({
+    personId: z.string().min(1),
+    fullName: z.string().min(2).max(120),
+    phone: z.string().max(40).optional(),
+  }),
+  async ({ input, ctx, db }) => {
+    const link = await db.departmentPerson.findUnique({
+      where: {
+        departmentId_personId: { departmentId: ctx.departmentId, personId: input.personId },
+      },
+    });
+    if (!link) throw new Error("This person is not linked to the department");
+    await updatePerson(db, input.personId, {
+      fullName: input.fullName,
+      phone: input.phone ?? null,
+    });
+    revalidatePath(`/d/${ctx.deptSlug}/people/${input.personId}`);
+    return { id: input.personId };
+  },
+  { permission: "staff.manage" },
+);
+
+export async function renamePersonForm(fd: FormData) {
+  return renamePersonAction(formToObject(fd));
 }

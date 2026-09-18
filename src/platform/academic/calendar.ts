@@ -1,5 +1,6 @@
 import type { PeriodKind, TermOrdinal } from "@/generated/prisma/enums";
 import { fromJson, toJson } from "../../lib/db/json";
+import { globalSingleton } from "../../lib/singleton";
 import type { Db } from "../../lib/db/types";
 import {
   defaultQuarters,
@@ -123,10 +124,14 @@ export interface Dependent {
 }
 
 /** Hook point for the scheduler's impact preview; returns rows that anchor on a period. */
-let dependentsResolver: (db: Db, periodId: string) => Promise<Dependent[]> = async () => [];
+const dependents = globalSingleton("period-dependents", () => ({
+  resolve: (async () => []) as (db: Db, periodId: string) => Promise<Dependent[]>,
+}));
 
-export function setPeriodDependentsResolver(fn: typeof dependentsResolver): void {
-  dependentsResolver = fn;
+export function setPeriodDependentsResolver(
+  fn: (db: Db, periodId: string) => Promise<Dependent[]>,
+): void {
+  dependents.resolve = fn;
 }
 
 /** Creates or moves a period; returns the period and the rows that depend on it. */
@@ -152,12 +157,11 @@ export async function setPeriod(db: Db, departmentId: string, input: PeriodInput
   const period = input.id
     ? await db.calendarPeriod.update({ where: { id: input.id }, data })
     : await db.calendarPeriod.create({ data: { departmentId, termId: input.termId, ...data } });
-  const dependents = await dependentsResolver(db, period.id);
-  return { period, dependents };
+  return { period, dependents: await dependents.resolve(db, period.id) };
 }
 
 export async function previewPeriodImpact(db: Db, periodId: string): Promise<Dependent[]> {
-  return dependentsResolver(db, periodId);
+  return dependents.resolve(db, periodId);
 }
 
 export async function deletePeriod(db: Db, periodId: string) {

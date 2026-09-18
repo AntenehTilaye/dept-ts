@@ -6,10 +6,12 @@ import { getStaffProfile, profileItemsOf } from "@/platform/people/staff";
 import { getStudent, currentSectionMembership } from "@/platform/people/students";
 import { teachingOf } from "@/platform/academic/teaching";
 import { ActionForm } from "@/components/forms/ActionForm";
+import { AuditPanel } from "@/components/AuditPanel";
+import { history } from "@/platform/audit/history";
 import { Field, SelectField, fmtDate } from "@/components/forms/Field";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { addProfileItemForm } from "../actions";
+import { addProfileItemForm, renamePersonForm } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +55,10 @@ export default async function PersonPage(props: PageProps<"/d/[dept]/people/[per
       )
     : null;
   const canManage = (await canDo(ctx, "staff.manage")).allowed || ctx.personId === personId;
+  const canEditPerson = (await canDo(ctx, "staff.manage")).allowed;
+  const timeline = canEditPerson
+    ? await history(db, { subjectType: "person", subjectId: personId }, 30)
+    : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -132,6 +138,27 @@ export default async function PersonPage(props: PageProps<"/d/[dept]/people/[per
             </ul>
           </CardContent>
         </Card>
+        {canEditPerson ? (
+          <Card data-testid="edit-person">
+            <CardHeader>
+              <CardTitle>Edit person</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ActionForm
+                action={renamePersonForm}
+                submitLabel="Save person"
+                successMessage="Person saved."
+                className="grid gap-2"
+                resetOnSuccess={false}
+              >
+                <input type="hidden" name="dept" value={dept} />
+                <input type="hidden" name="personId" value={personId} />
+                <Field name="fullName" label="Full name" required defaultValue={person.fullName} />
+                <Field name="phone" label="Phone" defaultValue={person.phone ?? ""} />
+              </ActionForm>
+            </CardContent>
+          </Card>
+        ) : null}
         <Card data-testid="profile-items">
           <CardHeader>
             <CardTitle>Profile items</CardTitle>
@@ -175,6 +202,16 @@ export default async function PersonPage(props: PageProps<"/d/[dept]/people/[per
             ) : null}
           </CardContent>
         </Card>
+        {canEditPerson ? (
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AuditPanel entries={timeline} />
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </div>
   );

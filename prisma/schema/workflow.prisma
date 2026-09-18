@@ -1,1 +1,80 @@
-// workflow models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Workflow engine (design part 04 §6): data-defined, versioned state machines. The instance
+// row is the ONLY owner of lifecycle state; the log is append-only (migration append_only).
+
+/// A versioned state machine. NULL departmentId = faculty-wide (system) definition; compiled
+/// features use key "feature:<featureKey>". The State/Transition JSON contract lives in
+/// src/platform/workflow/schema.ts. SHARED.
+model WorkflowDefinition {
+  id               String        @id @default(cuid())
+  departmentId     String?       @map("department_id")
+  department       Department?   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  key              String
+  version          Int
+  subjectType      SubjectType   @map("subject_type")
+  initialState     String        @map("initial_state")
+  statesJson       Json          @map("states_json")
+  transitionsJson  Json          @map("transitions_json")
+  lockedPathsJson  Json          @default("[]") @map("locked_paths_json")
+  isSystem         Boolean       @default(false) @map("is_system")
+  status           VersionStatus @default(draft)
+  featureVersionId String?       @map("feature_version_id")
+  createdBy        String?       @map("created_by")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  instances WorkflowInstance[]
+
+  @@unique([departmentId, key, version])
+  @@index([key, status])
+  @@map("workflow_definition")
+}
+
+/// One lifecycle per subject and definition key. `branchStates` holds the per-branch state while
+/// the instance sits in a compound state; branch completions serialise on this row
+/// (SELECT ... FOR UPDATE). TENANT.
+model WorkflowInstance {
+  id                String             @id @default(cuid())
+  departmentId      String             @map("department_id")
+  department        Department         @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  definitionId      String             @map("definition_id")
+  definition        WorkflowDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+  definitionKey     String             @map("definition_key")
+  definitionVersion Int                @map("definition_version")
+  subjectType       SubjectType        @map("subject_type")
+  subjectId         String             @map("subject_id")
+  currentState      String             @map("current_state")
+  branchStates      Json?              @map("branch_states")
+  enteredAt         DateTime           @default(now()) @map("entered_at")
+  dueAt             DateTime?          @map("due_at")
+  rowVersion        Int                @default(1) @map("row_version")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  transitions WorkflowTransitionLog[]
+
+  @@unique([subjectType, subjectId, definitionKey])
+  @@index([departmentId, definitionKey, currentState])
+  @@index([dueAt])
+  @@map("workflow_instance")
+}
+
+/// Append-only transition history. TENANT.
+model WorkflowTransitionLog {
+  id            String           @id @default(cuid())
+  departmentId  String           @map("department_id")
+  department    Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  instanceId    String           @map("instance_id")
+  instance      WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  transitionKey String           @map("transition_key")
+  branchKey     String?          @map("branch_key")
+  fromState     String           @map("from_state")
+  toState       String           @map("to_state")
+  actorUserId   String?          @map("actor_user_id")
+  comment       String?
+  payloadJson   Json?            @map("payload_json")
+  at            DateTime         @default(now())
+
+  @@index([instanceId, at])
+  @@index([departmentId])
+  @@map("workflow_transition_log")
+}

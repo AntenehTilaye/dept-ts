@@ -3,6 +3,9 @@ import { inject } from "vitest";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 import { poolConfig } from "@/lib/db/prisma";
+import type { Db } from "@/lib/db/types";
+import { auditExtension } from "@/platform/audit/interceptor";
+import { runWithAudit } from "@/platform/audit/context";
 import { requireEnv } from "./urls";
 
 // Two clients bound to the per-run schema:
@@ -11,9 +14,10 @@ import { requireEnv } from "./urls";
 export const testSchema: string = inject("testSchema");
 
 function client(url: string): PrismaClient {
+  // the app client carries the audit interceptor exactly like src/lib/db/prisma.ts
   return new PrismaClient({
     adapter: new PrismaPg(poolConfig(url, testSchema, 4), { schema: testSchema }),
-  });
+  }).$extends(auditExtension) as unknown as PrismaClient;
 }
 
 export const migratorDb: PrismaClient = client(requireEnv("DATABASE_URL_MIGRATE"));
@@ -26,7 +30,10 @@ export async function withDept<T>(
 ): Promise<T> {
   return appDb.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.current_department_id', ${departmentId}, true)`;
-    return fn(tx);
+    return runWithAudit(
+      { tx: tx as unknown as Db, departmentId, bypass: false },
+      async () => await fn(tx),
+    );
   });
 }
 

@@ -10,6 +10,7 @@ import {
   type DeptCtx,
 } from "../auth/require";
 import { withTenantTx, type TxClient } from "../db/tenant";
+import { runWithAudit } from "@/platform/audit/context";
 import { TenantMismatchError } from "../db/scoped";
 import type { SubjectRef } from "@/platform/identity/can";
 import type { ActionVerb } from "@/platform/identity/levels";
@@ -91,9 +92,19 @@ export function safeAction<S extends ZodType, R>(
     const input = parsed.data as z.output<S> & { dept: string };
     try {
       const ctx = await requireDeptContext(input.dept);
-      if (opts.permission) await requireCan(ctx, opts.permission, opts.subject?.(input), opts.verb);
-      const data = await withTenantTx(ctx.departmentId, (db) => handler({ input, ctx, db }));
-      return { ok: true, data };
+      return await runWithAudit(
+        {
+          actorUserId: ctx.user.id,
+          correlationId: ctx.correlationId,
+          departmentId: ctx.departmentId,
+        },
+        async () => {
+          if (opts.permission)
+            await requireCan(ctx, opts.permission, opts.subject?.(input), opts.verb);
+          const data = await withTenantTx(ctx.departmentId, (db) => handler({ input, ctx, db }));
+          return { ok: true as const, data };
+        },
+      );
     } catch (error) {
       return mapActionError(error);
     }
@@ -110,8 +121,13 @@ export function adminAction<S extends ZodType, R>(
     if (!parsed.success) return validationResult(parsed.error);
     try {
       const ctx = await requireAdmin();
-      const data = await handler({ input: parsed.data, ctx });
-      return { ok: true, data };
+      return await runWithAudit(
+        { actorUserId: ctx.user.id, correlationId: ctx.correlationId, departmentId: null },
+        async () => {
+          const data = await handler({ input: parsed.data, ctx });
+          return { ok: true as const, data };
+        },
+      );
     } catch (error) {
       return mapActionError(error);
     }

@@ -1,5 +1,7 @@
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { prismaRoot } from "./prisma";
+import { runWithAudit } from "@/platform/audit/context";
+import type { Db } from "./types";
 import { SHARED_MODELS, TENANT_MODELS } from "./tenancy-manifest";
 
 // Department-scoped Prisma client.
@@ -112,7 +114,11 @@ export function forDepartment(departmentId: string) {
             const raw = tx as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>;
             const fn = raw[operation];
             if (!fn) throw new Error(`Unsupported raw operation ${operation}`);
-            return Array.isArray(args) ? fn.call(tx, ...args) : fn.call(tx, args);
+            return runWithAudit(
+              { tx: tx as unknown as Db, departmentId, bypass: false },
+              async () =>
+                Array.isArray(args) ? await fn.call(tx, ...args) : await fn.call(tx, args),
+            );
           });
         },
         $allModels: {
@@ -127,7 +133,10 @@ export function forDepartment(departmentId: string) {
                 tx as unknown as Record<string, Record<string, (a: unknown) => Promise<unknown>>>
               )[delegateName(model)];
               if (!delegate) throw new Error(`No delegate for model ${model}`);
-              return delegate[operation]!(finalArgs);
+              return runWithAudit(
+                { tx: tx as unknown as Db, departmentId, bypass: false },
+                async () => await delegate[operation]!(finalArgs),
+              );
             });
           },
         },

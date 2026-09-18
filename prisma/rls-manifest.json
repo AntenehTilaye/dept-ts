@@ -83,9 +83,25 @@
     {
       "model": "Term",
       "table": "term"
+    },
+    {
+      "model": "WorkflowInstance",
+      "table": "workflow_instance"
+    },
+    {
+      "model": "WorkflowTransitionLog",
+      "table": "workflow_transition_log"
     }
   ],
   "shared": [
+    {
+      "model": "AuditEvent",
+      "table": "audit_event"
+    },
+    {
+      "model": "DomainEvent",
+      "table": "domain_event"
+    },
     {
       "model": "Role",
       "table": "role"
@@ -93,6 +109,10 @@
     {
       "model": "RolePermission",
       "table": "role_permission"
+    },
+    {
+      "model": "WorkflowDefinition",
+      "table": "workflow_definition"
     }
   ],
   "global": [
@@ -103,6 +123,10 @@
     {
       "model": "Department",
       "table": "department"
+    },
+    {
+      "model": "EventHandlerReceipt",
+      "table": "event_handler_receipt"
     },
     {
       "model": "Invitation",
@@ -141,5 +165,5 @@
       "table": "verification"
     }
   ],
-  "hash": "4ae06ef4c67703b797b106198df0878d80a576dc55a9081b435071ff9fb514f2"
+  "hash": "0c1f91135d5044ed1e289fa97e0732512e1b0a152dfa23f63cd10db457a57002"
 }

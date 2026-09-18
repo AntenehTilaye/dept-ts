@@ -1,3 +1,4 @@
+import { globalSingleton } from "../../lib/singleton";
 import type { Db } from "../../lib/db/types";
 import type { Relationship } from "../identity/levels";
 import type { SubjectContext, SubjectRef, SubjectRegistration, SubjectSnapshot } from "./types";
@@ -8,7 +9,10 @@ export type * from "./types";
 // entry point. Registrations are keyed by SubjectType enum member name and read through the
 // client the caller supplies (its department transaction, or a scoped client for can()).
 
-const registrations = new Map<string, SubjectRegistration>();
+const registrations = globalSingleton(
+  "subject-registry",
+  () => new Map<string, SubjectRegistration>(),
+);
 
 export class UnknownSubjectTypeError extends Error {
   constructor(subjectType: string) {

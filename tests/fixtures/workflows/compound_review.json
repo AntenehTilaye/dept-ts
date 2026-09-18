@@ -1,0 +1,102 @@
+{
+  "key": "test.compound_review",
+  "subjectType": "task",
+  "initialState": "request",
+  "states": [
+    { "key": "request", "label": "Request", "category": "initial" },
+    {
+      "key": "review",
+      "label": "Parallel review",
+      "category": "waiting",
+      "compound": {
+        "branches": [
+          {
+            "key": "chair",
+            "label": "Chair review",
+            "initialState": "review.chair.pending",
+            "states": ["review.chair.pending", "review.chair.done", "review.chair.rejected"],
+            "doneState": "review.chair.done",
+            "rejectedState": "review.chair.rejected"
+          },
+          {
+            "key": "head",
+            "label": "Head review",
+            "initialState": "review.head.pending",
+            "states": ["review.head.pending", "review.head.done", "review.head.rejected"],
+            "doneState": "review.head.done",
+            "rejectedState": "review.head.rejected"
+          }
+        ],
+        "completion": { "rule": "quorum", "n": 1 },
+        "onComplete": "approved",
+        "onReject": "revision"
+      }
+    },
+    { "key": "revision", "label": "Needs revision", "category": "active" },
+    {
+      "key": "approved",
+      "label": "Approved",
+      "category": "terminal",
+      "terminalCategory": "success"
+    }
+  ],
+  "transitions": [
+    {
+      "key": "request.submit",
+      "from": "request",
+      "to": "review",
+      "action": "submit",
+      "requiredPermission": "task.act"
+    },
+    {
+      "key": "review.chair.pending.approve",
+      "from": "review.chair.pending",
+      "to": "review.chair.done",
+      "action": "approve",
+      "branch": "chair",
+      "requiredPermission": "task.manage"
+    },
+    {
+      "key": "review.chair.pending.reject",
+      "from": "review.chair.pending",
+      "to": "review.chair.rejected",
+      "action": "reject",
+      "branch": "chair",
+      "requiredPermission": "task.manage",
+      "requiredComment": true
+    },
+    {
+      "key": "review.head.pending.approve",
+      "from": "review.head.pending",
+      "to": "review.head.done",
+      "action": "approve",
+      "branch": "head",
+      "requiredPermission": "task.manage"
+    },
+    {
+      "key": "review.head.pending.reject",
+      "from": "review.head.pending",
+      "to": "review.head.rejected",
+      "action": "reject",
+      "branch": "head",
+      "requiredPermission": "task.manage",
+      "requiredComment": true
+    },
+    {
+      "key": "review.$join",
+      "from": "review",
+      "to": "approved",
+      "action": "$join",
+      "system": true,
+      "guards": ["feature.parallelComplete"],
+      "effects": [{ "kind": "emit", "args": { "name": "review.completed" } }]
+    },
+    {
+      "key": "revision.resubmit",
+      "from": "revision",
+      "to": "review",
+      "action": "resubmit",
+      "requiredPermission": "task.act"
+    }
+  ]
+}
