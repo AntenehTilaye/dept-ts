@@ -26,5 +26,7 @@ export function tenancyOf(model: string): "tenant" | "shared" | "global" {
   if (TENANT_MODELS.has(model)) return "tenant";
   if (SHARED_MODELS.has(model)) return "shared";
   if (GLOBAL_MODELS.has(model)) return "global";
-  throw new Error(`Model ${model} is not classified in prisma/rls-manifest.json (run npm run rls:gen)`);
+  throw new Error(
+    `Model ${model} is not classified in prisma/rls-manifest.json (run npm run rls:gen)`,
+  );
 }

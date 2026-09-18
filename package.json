@@ -21,6 +21,7 @@
     "test:unit": "vitest run --project unit --project components",
     "test:integration": "vitest run --project integration",
     "test:worker": "vitest run --project worker",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",

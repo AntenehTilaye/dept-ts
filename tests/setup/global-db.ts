@@ -34,6 +34,7 @@ export default async function setup(project: TestProject) {
     stdio: "inherit",
   });
 
+  process.env.DATABASE_SCHEMA = schema;
   const { seedMinimal } = await import("./seed-minimal");
   await seedMinimal(schema);
 

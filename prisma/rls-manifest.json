@@ -1,5 +1,10 @@
 {
-  "tenant": [],
+  "tenant": [
+    {
+      "model": "RoleGrant",
+      "table": "role_grant"
+    }
+  ],
   "shared": [
     {
       "model": "Role",
@@ -12,17 +17,45 @@
   ],
   "global": [
     {
+      "model": "Account",
+      "table": "account"
+    },
+    {
       "model": "Department",
       "table": "department"
+    },
+    {
+      "model": "Invitation",
+      "table": "invitation"
+    },
+    {
+      "model": "Member",
+      "table": "member"
+    },
+    {
+      "model": "Organization",
+      "table": "organization"
     },
     {
       "model": "Permission",
       "table": "permission"
     },
     {
+      "model": "Session",
+      "table": "session"
+    },
+    {
       "model": "SystemSetting",
       "table": "system_setting"
+    },
+    {
+      "model": "User",
+      "table": "user"
+    },
+    {
+      "model": "Verification",
+      "table": "verification"
     }
   ],
-  "hash": "2129461f8f823ded42cafa9d58d2cd3139dc3da2fb3122e91bed716febd90e83"
+  "hash": "edc7154e42692284ac46c6214b633e00a7b08ef672d7f35b543fd056de3b4b64"
 }

@@ -21,6 +21,7 @@ once on the host so bind-mount modes never show as changes.
 | Checks | `docker compose run --rm web npm run check` |
 | Unit + components | `docker compose --profile test run --rm test npx vitest run --project unit --project components` |
 | Integration + worker | `docker compose --profile test run --rm test npx vitest run --project integration --project worker --coverage` |
+| Everything with coverage thresholds | `docker compose --profile test run --rm test npm run test:coverage` |
 | End-to-end | `docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait web worker` · `docker compose -f compose.yaml -f compose.e2e.yaml --profile e2e run --rm e2e npx playwright test` · `docker compose -f compose.yaml -f compose.e2e.yaml down` |
 | All guard rails | `.\scripts\verify.ps1` (PowerShell) or `scripts/verify.sh` |
 | New migration | `docker compose run --rm web npx prisma migrate dev --create-only --name <name>` → (tenant tables) `docker compose run --rm web sh -c "npx tsx prisma/scripts/gen-rls.ts --append prisma/migrations/*_<name>/migration.sql"` → `docker compose run --rm web npx prisma migrate dev` → `docker compose run --rm web npx prisma generate` |

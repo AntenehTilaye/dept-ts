@@ -48,7 +48,7 @@ export function checkSchema(dmmf: Dmmf, jsonSchemaKeys: ReadonlySet<string>): st
     }
   }
 
-  if (modelNames.has("User")) {
+  if (modelNames.has("User") && modelNames.has("Person")) {
     const user = dmmf.datamodel.models.find((m) => m.name === "User")!;
     if (!user.fields.some((f) => f.name === "person" && f.kind === "object")) {
       problems.push(

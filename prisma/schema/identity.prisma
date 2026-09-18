@@ -3,14 +3,15 @@
 //   GLOBAL          no departmentId, no RLS               Department, Permission, SystemSetting
 //   SHARED-OR-TENANT nullable departmentId (NULL = faculty-wide row written only under bypass)
 //                                                          Role, RolePermission
-//   TENANT          required departmentId, FORCE RLS       (RoleGrant arrives with authentication)
+//   TENANT          required departmentId, FORCE RLS       RoleGrant
 
 /// Organisational unit and tenancy anchor. `id` equals the better-auth Organization id once
 /// authentication lands (no default: departments are created through departmentService).
 model Department {
-  id             String   @id
-  organizationId String   @unique @map("organization_id")
-  code           String   @unique
+  id             String       @id
+  organizationId String       @unique @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  code           String       @unique
   name           String
   facultyName    String?  @map("faculty_name")
   headPersonId   String?  @map("head_person_id")
@@ -23,6 +24,7 @@ model Department {
   // field has one). Later phases append to this list.
   roles           Role[]
   rolePermissions RolePermission[]
+  roleGrants      RoleGrant[]
 
   @@map("department")
 }
@@ -57,6 +59,7 @@ model Role {
   updatedAt    DateTime    @updatedAt @map("updated_at")
 
   permissions RolePermission[]
+  grants      RoleGrant[]
 
   @@unique([departmentId, key])
   @@index([departmentId])
@@ -79,6 +82,38 @@ model RolePermission {
   @@index([departmentId])
   @@index([permissionKey])
   @@map("role_permission")
+}
+
+/// A role held by a user, optionally scoped (committee, section, ...) and time-bounded.
+/// `source = derived` rows are synchronised from registry facts (membership, committee chair,
+/// teaching assignment, representative, lab duty) by outbox handlers and repaired nightly;
+/// `manual` rows are edited by administrators. Empty-string defaults keep the identity index
+/// free of NULLs. TENANT.
+model RoleGrant {
+  id              String       @id @default(cuid())
+  departmentId    String       @map("department_id")
+  department      Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  userId          String       @map("user_id")
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId          String       @map("role_id")
+  role            Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  scopeType       ScopeType    @map("scope_type")
+  scopeId         String       @default("") @map("scope_id")
+  validFrom       DateTime     @default(now()) @map("valid_from")
+  validTo         DateTime?    @map("valid_to")
+  source          GrantSource
+  derivedFromType SubjectType? @map("derived_from_type")
+  derivedFromId   String       @default("") @map("derived_from_id")
+  grantedBy       String?      @map("granted_by")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  @@unique([userId, roleId, scopeType, scopeId, derivedFromId], map: "role_grant_identity")
+  @@index([departmentId, userId, validTo])
+  @@index([userId, departmentId, validTo])
+  @@index([scopeType, scopeId])
+  @@index([derivedFromType, derivedFromId])
+  @@map("role_grant")
 }
 
 /// Typed configuration by scope. GLOBAL: filtered in the app; only admins and the worker

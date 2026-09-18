@@ -22,6 +22,8 @@ export const envSchema = z.object({
   UPLOAD_MAX_MB: z.coerce.number().int().positive().default(25),
   SEED_DEMO: z.enum(["0", "1"]).default("0"),
   SEED_AUTO_PUBLISH: z.enum(["0", "1"]).default("0"),
+  /** "0" disables better-auth rate limiting (e2e runs sign every seeded user in from one IP). */
+  AUTH_RATE_LIMIT: z.enum(["0", "1"]).default("1"),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -17,14 +17,14 @@ describe("scoped client", () => {
   beforeAll(async () => {
     await migratorDb.role.createMany({
       data: [
-        { key: "shared_global", name: "Global", departmentId: null },
-        { key: "ee_only", name: "EE", departmentId: DEPT_EE },
+        { key: "sc_shared_global", name: "Global", departmentId: null },
+        { key: "sc_ee_only", name: "EE", departmentId: DEPT_EE },
       ],
     });
   });
 
   it("injects the active department into writes", async () => {
-    const created = await cs.role.create({ data: { key: "cs_created", name: "CS" } });
+    const created = await cs.role.create({ data: { key: "sc_cs_created", name: "CS" } });
     expect(created.departmentId).toBe(DEPT_CS);
     const stored = await migratorDb.role.findUnique({ where: { id: created.id } });
     expect(stored?.departmentId).toBe(DEPT_CS);
@@ -32,22 +32,28 @@ describe("scoped client", () => {
 
   it("rejects a foreign departmentId before the database is reached", async () => {
     await expect(
-      cs.role.create({ data: { key: "foreign", name: "x", departmentId: DEPT_EE } }),
+      cs.role.create({ data: { key: "sc_foreign", name: "x", departmentId: DEPT_EE } }),
     ).rejects.toBeInstanceOf(TenantMismatchError);
-    expect(await migratorDb.role.count({ where: { key: "foreign" } })).toBe(0);
+    expect(await migratorDb.role.count({ where: { key: "sc_foreign" } })).toBe(0);
   });
 
   it("reads see the department's rows and faculty-wide rows only", async () => {
-    const keys = (await cs.role.findMany({ orderBy: { key: "asc" } })).map((r) => r.key);
-    expect(keys).toEqual(["cs_created", "shared_global"]);
-    expect(await cs.role.count()).toBe(2);
+    const mine = { key: { startsWith: "sc_" } };
+    const keys = (await cs.role.findMany({ where: mine, orderBy: { key: "asc" } })).map(
+      (r) => r.key,
+    );
+    expect(keys).toEqual(["sc_cs_created", "sc_shared_global"]);
+    expect(await cs.role.count({ where: mine })).toBe(2);
   });
 
   it("cross-department updates report count 0 and a faculty-wide write needs bypass", async () => {
-    const res = await cs.role.updateMany({ where: { key: "ee_only" }, data: { name: "hacked" } });
+    const res = await cs.role.updateMany({
+      where: { key: "sc_ee_only" },
+      data: { name: "hacked" },
+    });
     expect(res.count).toBe(0);
     await expect(
-      cs.role.create({ data: { key: "no_bypass", name: "x", departmentId: null } }),
+      cs.role.create({ data: { key: "sc_no_bypass", name: "x", departmentId: null } }),
     ).rejects.toThrow(/row-level security/);
   });
 
@@ -57,31 +63,36 @@ describe("scoped client", () => {
       orderBy: { code: "asc" },
     });
     expect(depts.find((d) => d.id === DEPT_EE)?.roles).toEqual([]);
-    expect(depts.find((d) => d.id === DEPT_CS)?.roles.map((r) => r.key)).toEqual(["cs_created"]);
+    expect(
+      depts
+        .find((d) => d.id === DEPT_CS)
+        ?.roles.map((r) => r.key)
+        .filter((k) => k.startsWith("sc_")),
+    ).toEqual(["sc_cs_created"]);
   });
 
   it("injects into createMany rows and upsert create blocks", async () => {
     const many = await cs.role.createMany({
       data: [
-        { key: "many_a", name: "A" },
-        { key: "many_b", name: "B" },
+        { key: "sc_many_a", name: "A" },
+        { key: "sc_many_b", name: "B" },
       ],
     });
     expect(many.count).toBe(2);
     expect(
       await migratorDb.role.count({
-        where: { key: { startsWith: "many_" }, departmentId: DEPT_CS },
+        where: { key: { startsWith: "sc_many_" }, departmentId: DEPT_CS },
       }),
     ).toBe(2);
     const up = await cs.role.upsert({
-      where: { departmentId_key: { departmentId: DEPT_CS, key: "upserted" } },
-      create: { key: "upserted", name: "new" },
+      where: { departmentId_key: { departmentId: DEPT_CS, key: "sc_upserted" } },
+      create: { key: "sc_upserted", name: "new" },
       update: { name: "updated" },
     });
     expect(up.departmentId).toBe(DEPT_CS);
     const again = await cs.role.upsert({
-      where: { departmentId_key: { departmentId: DEPT_CS, key: "upserted" } },
-      create: { key: "upserted", name: "new" },
+      where: { departmentId_key: { departmentId: DEPT_CS, key: "sc_upserted" } },
+      create: { key: "sc_upserted", name: "new" },
       update: { name: "updated" },
     });
     expect(again.name).toBe("updated");
@@ -110,18 +121,25 @@ describe("scoped client", () => {
   it("withTenantTx scopes a whole transaction and withTenantBypass lifts the boundary", async () => {
     process.env.DATABASE_SCHEMA = (await import("../../setup/db")).testSchema;
     const inCs = await withTenantTx(DEPT_CS, async (tx) => {
-      await tx.role.create({ data: { key: "tx_role", name: "tx", departmentId: DEPT_CS } });
-      return (await tx.role.findMany({ orderBy: { key: "asc" } })).map((r) => r.key);
+      await tx.role.create({ data: { key: "sc_tx_role", name: "tx", departmentId: DEPT_CS } });
+      return (
+        await tx.role.findMany({ where: { key: { startsWith: "sc_" } }, orderBy: { key: "asc" } })
+      ).map((r) => r.key);
     });
-    expect(inCs).toEqual(expect.arrayContaining(["cs_created", "shared_global", "tx_role"]));
-    expect(inCs).not.toContain("ee_only");
+    expect(inCs).toEqual(
+      expect.arrayContaining(["sc_cs_created", "sc_shared_global", "sc_tx_role"]),
+    );
+    expect(inCs).not.toContain("sc_ee_only");
     const all = await withTenantBypass(
       { worker: true, jobName: "test" },
       "test bypass",
-      async (tx) => (await tx.role.findMany({ orderBy: { key: "asc" } })).map((r) => r.key),
+      async (tx) =>
+        (
+          await tx.role.findMany({ where: { key: { startsWith: "sc_" } }, orderBy: { key: "asc" } })
+        ).map((r) => r.key),
     );
     expect(all).toEqual(
-      expect.arrayContaining(["cs_created", "ee_only", "shared_global", "tx_role"]),
+      expect.arrayContaining(["sc_cs_created", "sc_ee_only", "sc_shared_global", "sc_tx_role"]),
     );
   });
 });
