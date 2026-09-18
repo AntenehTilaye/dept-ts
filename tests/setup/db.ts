@@ -2,6 +2,7 @@ import pg from "pg";
 import { inject } from "vitest";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, type Prisma } from "@/generated/prisma/client";
+import { poolConfig } from "@/lib/db/prisma";
 import { requireEnv } from "./urls";
 
 // Two clients bound to the per-run schema:
@@ -11,7 +12,7 @@ export const testSchema: string = inject("testSchema");
 
 function client(url: string): PrismaClient {
   return new PrismaClient({
-    adapter: new PrismaPg({ connectionString: url, max: 4 }, { schema: testSchema }),
+    adapter: new PrismaPg(poolConfig(url, testSchema, 4), { schema: testSchema }),
   });
 }
 

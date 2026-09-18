@@ -1,6 +1,28 @@
 {
   "tenant": [],
-  "shared": [],
-  "global": ["system_setting"],
-  "hash": "2d4afeb29a443248843fd39eda0b845cb454915b58aedca8607c21fea5339f97"
+  "shared": [
+    {
+      "model": "Role",
+      "table": "role"
+    },
+    {
+      "model": "RolePermission",
+      "table": "role_permission"
+    }
+  ],
+  "global": [
+    {
+      "model": "Department",
+      "table": "department"
+    },
+    {
+      "model": "Permission",
+      "table": "permission"
+    },
+    {
+      "model": "SystemSetting",
+      "table": "system_setting"
+    }
+  ],
+  "hash": "2129461f8f823ded42cafa9d58d2cd3139dc3da2fb3122e91bed716febd90e83"
 }

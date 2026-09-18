@@ -1,4 +1,163 @@
-// Global enums. Values are lower_snake. Later phases append the remaining enums here.
+// Global enums. Values are lower_snake; every enum is @@map'ed to its snake_case type name.
+// This is the complete list of the schema design (docs/design/04, §1); later phases only
+// append values where the plan says so (JobKind in P10 and P27).
+
+enum SubjectType {
+  department
+  person
+  staff_profile
+  student
+  program
+  section
+  group
+  group_membership
+  section_representative
+  student_section_membership
+  academic_year
+  term
+  calendar_period
+  course
+  course_offering
+  section_offering
+  teaching_assignment
+  enrollment
+  resource
+  asset
+  maintenance_record
+  committee
+  committee_report
+  task
+  meeting
+  appointment
+  case
+  annual_plan
+  planned_activity
+  quarterly_report
+  portfolio
+  cqi_report
+  campaign
+  campaign_subject
+  campaign_invitation
+  submission
+  form_definition
+  thread
+  comment
+  announcement
+  document
+  template
+  exam_schedule
+  exam_session
+  lab_schedule
+  lab_session
+  duty_assignment
+  import_batch
+  load_cycle
+  availability_policy
+  availability_block
+  workflow_instance
+  notification
+  user
+  feature_definition
+  feature_record
+  feature_step_instance
+  report
+  generated_report
+
+  @@map("subject_type")
+}
+
+enum PersonType {
+  staff
+  student
+  external
+
+  @@map("person_type")
+}
+
+enum ActiveStatus {
+  active
+  inactive
+
+  @@map("active_status")
+}
+
+enum StudentStatus {
+  active
+  graduated
+  withdrawn
+
+  @@map("student_status")
+}
+
+enum GroupKind {
+  committee
+  section
+  meeting
+  panel
+  lab_team
+  adhoc
+
+  @@map("group_kind")
+}
+
+enum GroupRole {
+  chair
+  secretary
+  member
+  lead
+  ra
+  attendee
+
+  @@map("group_role")
+}
+
+enum ScopeType {
+  global
+  department
+  committee
+  section
+  program
+  section_offering
+  lab_schedule
+  meeting
+  feature_record
+
+  @@map("scope_type")
+}
+
+enum PermissionLevel {
+  full
+  manage
+  review
+  own
+  assigned
+  participate
+  limited
+  view
+  submit
+  none
+
+  @@map("permission_level")
+}
+
+enum GrantSource {
+  manual
+  derived
+
+  @@map("grant_source")
+}
+
+enum ProfileItemKind {
+  qualification
+  publication
+  research_activity
+  training
+  certification
+  work_experience
+  responsibility
+
+  @@map("profile_item_kind")
+}
 
 enum SettingScope {
   global
@@ -6,4 +165,799 @@ enum SettingScope {
   program
 
   @@map("setting_scope")
+}
+
+enum YearStatus {
+  planned
+  active
+  closed
+
+  @@map("year_status")
+}
+
+enum TermOrdinal {
+  first
+  second
+  summer
+
+  @@map("term_ordinal")
+}
+
+enum TermStatus {
+  planned
+  current
+  closed
+
+  @@map("term_status")
+}
+
+enum PeriodKind {
+  registration
+  add_drop
+  course_preference
+  elective_selection
+  teaching
+  examination
+  portfolio_submission
+  evaluation
+  custom
+
+  @@map("period_kind")
+}
+
+enum CourseType {
+  core
+  elective
+  common
+
+  @@map("course_type")
+}
+
+enum CourseStatus {
+  active
+  retired
+
+  @@map("course_status")
+}
+
+enum TeachingRole {
+  lecture
+  lab
+  tutorial
+  coordinator
+
+  @@map("teaching_role")
+}
+
+enum AssignmentSource {
+  manual
+  load_import
+  preference_review
+
+  @@map("assignment_source")
+}
+
+enum EnrollmentStatus {
+  enrolled
+  added
+  dropped
+  withdrawn
+
+  @@map("enrollment_status")
+}
+
+enum EnrollmentSource {
+  import
+  add_drop_decision
+  manual
+
+  @@map("enrollment_source")
+}
+
+enum WeekPattern {
+  all
+  odd
+  even
+
+  @@map("week_pattern")
+}
+
+enum RowSource {
+  import
+  manual
+
+  @@map("row_source")
+}
+
+enum ResourceKind {
+  classroom
+  computer_lab
+  meeting_room
+  office
+  exam_hall
+  other
+
+  @@map("resource_kind")
+}
+
+enum ResourceStatus {
+  available
+  maintenance
+  retired
+
+  @@map("resource_status")
+}
+
+enum AssetCategory {
+  computer
+  projector
+  networking
+  software_license
+  furniture
+  equipment
+  other
+
+  @@map("asset_category")
+}
+
+enum AssetStatus {
+  in_use
+  spare
+  repair
+  retired
+
+  @@map("asset_status")
+}
+
+enum TaskKind {
+  general
+  committee_task
+  department_task
+  instructor_task
+  student_activity
+  administrative
+  action_item
+  case
+  student_issue
+  planned_activity
+  cqi_action
+  maintenance
+  lab_activity
+  feature_step
+
+  @@map("task_kind")
+}
+
+enum Priority {
+  low
+  normal
+  high
+  urgent
+
+  @@map("priority")
+}
+
+enum AssigneeType {
+  person
+  group
+
+  @@map("assignee_type")
+}
+
+enum AssignmentRole {
+  responsible
+  contributor
+  reviewer
+
+  @@map("assignment_role")
+}
+
+enum Frequency {
+  daily
+  weekly
+  monthly
+  termly
+  yearly
+
+  @@map("frequency")
+}
+
+enum FormKind {
+  evaluation
+  add_drop
+  elective
+  preference
+  survey
+  issue
+  committee_report
+  portfolio_narrative
+  cqi_narrative
+  quarterly_narrative
+  activity_progress
+  appointment_request
+  feature_step
+  generic
+
+  @@map("form_kind")
+}
+
+enum FormStatus {
+  draft
+  published
+  retired
+
+  @@map("form_status")
+}
+
+enum QuestionType {
+  short_text
+  long_text
+  number
+  date
+  datetime
+  boolean
+  single_choice
+  multi_choice
+  likert
+  scale
+  person_picker
+  group_picker
+  course_picker
+  offering_picker
+  section_picker
+  term_picker
+  resource_picker
+  task_picker
+  record_picker
+  audience_picker
+  ranked_list
+  file
+  repeating_group
+  section_header
+  computed
+
+  @@map("question_type")
+}
+
+enum SourceBinding {
+  offerings_in_term
+  courses_in_program
+  electives_in_campaign
+  own_enrollments
+  staff_in_department
+  tasks_in_context
+  members_of_parent
+  prior_cqi_items
+  resources_of_kind
+  records_of_feature
+  participants_of_parent
+  none
+
+  @@map("source_binding")
+}
+
+enum Aggregation {
+  mean
+  distribution
+  count
+  rank_sum
+  top_n
+  none
+
+  @@map("aggregation")
+}
+
+enum CampaignKind {
+  evaluation
+  add_drop
+  elective
+  preference
+  survey
+
+  @@map("campaign_kind")
+}
+
+enum Anonymity {
+  identified
+  anonymous
+  pseudonymous
+
+  @@map("anonymity")
+}
+
+enum SubmissionRule {
+  single
+  editable_until_close
+  multiple
+
+  @@map("submission_rule")
+}
+
+enum AudienceMode {
+  snapshot_at_publish
+  live
+
+  @@map("audience_mode")
+}
+
+enum SubjectMode {
+  none
+  per_subject
+
+  @@map("subject_mode")
+}
+
+enum CampaignSubjectType {
+  person
+  course
+  course_offering
+  section_offering
+  teaching_assignment
+
+  @@map("campaign_subject_type")
+}
+
+enum EvaluatorGroup {
+  students
+  colleagues
+  dh
+  other
+
+  @@map("evaluator_group")
+}
+
+enum InvitationStatus {
+  pending
+  opened
+  submitted
+  expired
+
+  @@map("invitation_status")
+}
+
+enum SubmissionStatus {
+  draft
+  submitted
+  withdrawn
+
+  @@map("submission_status")
+}
+
+enum StateCategory {
+  initial
+  active
+  waiting
+  terminal
+
+  @@map("state_category")
+}
+
+enum VersionStatus {
+  draft
+  active
+  retired
+
+  @@map("version_status")
+}
+
+enum FeatureVersionStatus {
+  draft
+  published
+  retired
+
+  @@map("feature_version_status")
+}
+
+enum FeatureStepStatus {
+  pending
+  active
+  done
+  skipped
+  rejected
+
+  @@map("feature_step_status")
+}
+
+enum FeatureMigrationStatus {
+  planned
+  running
+  done
+  failed
+  blocked
+
+  @@map("feature_migration_status")
+}
+
+enum AdapterHook {
+  guard
+  effect
+  on_enter
+  on_exit
+  compute
+  validate
+  auto
+  backing
+  export
+  source_binding
+  relationship
+  projection
+
+  @@map("adapter_hook")
+}
+
+enum OrgScope {
+  faculty
+  department
+  program
+  section
+
+  @@map("org_scope")
+}
+
+enum ReminderKind {
+  deadline
+  interval
+
+  @@map("reminder_kind")
+}
+
+enum JobKind {
+  reminder
+  interval_nudge
+  outbox_dispatch
+  campaign_open
+  campaign_close
+  campaign_aggregate
+  auto_transition
+  recurrence_spawn
+  snapshot_compute
+  portfolio_provision
+  report_generate
+  feature_migrate
+  overdue_sweep
+  grant_reconcile
+  calendar_autotransition
+  retention
+  search_reindex
+  projection_rebuild
+
+  @@map("job_kind")
+}
+
+enum JobStatus {
+  scheduled
+  sent
+  running
+  done
+  failed
+  cancelled
+
+  @@map("job_status")
+}
+
+enum NotificationCategory {
+  assignment
+  deadline_approaching
+  deadline_missed
+  committee_task
+  portfolio_reminder
+  evaluation_invitation
+  appointment
+  meeting
+  invigilation
+  lab_assignment
+  preference_request
+  campaign
+  announcement
+  mention
+  workflow
+  report_ready
+  system_alert
+
+  @@map("notification_category")
+}
+
+enum Channel {
+  in_app
+  email
+  sms
+
+  @@map("channel")
+}
+
+enum DeliveryStatus {
+  pending
+  queued
+  sent
+  failed
+  bounced
+
+  @@map("delivery_status")
+}
+
+enum Digest {
+  immediate
+  daily
+
+  @@map("digest")
+}
+
+enum TemplateKind {
+  message
+  reminder
+  document
+  report
+  export_layout
+
+  @@map("template_kind")
+}
+
+enum AccessMode {
+  inherit
+  explicit
+
+  @@map("access_mode")
+}
+
+enum LinkRole {
+  attachment
+  deliverable
+  tor
+  minutes
+  evidence
+  source
+  generated_output
+  signature
+
+  @@map("link_role")
+}
+
+enum GranteeType {
+  role
+  person
+  group
+
+  @@map("grantee_type")
+}
+
+enum DocPermission {
+  read
+  write
+
+  @@map("doc_permission")
+}
+
+enum ThreadKind {
+  comments
+  revision_notes
+  conversation
+
+  @@map("thread_kind")
+}
+
+enum ThreadStatus {
+  open
+  closed
+
+  @@map("thread_status")
+}
+
+enum Visibility {
+  all
+  reviewers_only
+  internal
+
+  @@map("visibility")
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+  transition
+  publish
+  login
+  export
+  download
+  permission_change
+  denied
+  tenant_bypass
+
+  @@map("audit_action")
+}
+
+enum ImportKind {
+  assessment
+  attendance
+  roster
+  students
+  staff
+  lab_schedule
+  class_timetable
+  exam_timetable
+  load_result
+  assets
+
+  @@map("import_kind")
+}
+
+enum ImportMode {
+  file
+  manual
+
+  @@map("import_mode")
+}
+
+enum Disposition {
+  ok
+  error
+  skip
+
+  @@map("disposition")
+}
+
+enum OwnerType {
+  person
+  resource
+
+  @@map("owner_type")
+}
+
+enum BlockKind {
+  teaching
+  lab
+  exam
+  invigilation
+  meeting
+  appointment
+  leave
+  blackout
+
+  @@map("block_kind")
+}
+
+enum Severity {
+  hard
+  soft
+
+  @@map("severity")
+}
+
+enum PolicyPurpose {
+  appointments
+  invigilation
+  leave
+
+  @@map("policy_purpose")
+}
+
+enum ReportFormat {
+  pdf
+  xlsx
+  csv
+  html
+
+  @@map("report_format")
+}
+
+enum ReportStatus {
+  queued
+  running
+  done
+  failed
+
+  @@map("report_status")
+}
+
+enum ExportRowSource {
+  reviewed_preferences
+  campaign_results
+
+  @@map("export_row_source")
+}
+
+enum FileFormat {
+  xlsx
+  csv
+
+  @@map("file_format")
+}
+
+enum CompletionStatus {
+  fully
+  partially
+  not_completed
+
+  @@map("completion_status")
+}
+
+enum ComparisonStrategy {
+  previous_semester
+  previous_year
+  all
+  custom
+
+  @@map("comparison_strategy")
+}
+
+enum CqiKind {
+  problem
+  action_taken
+  recommendation
+  planned_action
+
+  @@map("cqi_kind")
+}
+
+enum CqiCategory {
+  low_performance
+  difficult_topic
+  assessment
+  resources
+  attendance
+  other
+
+  @@map("cqi_category")
+}
+
+enum ImplStatus {
+  n_a
+  planned
+  implemented
+  partial
+  not_implemented
+  dropped
+
+  @@map("impl_status")
+}
+
+enum Outcome {
+  pass
+  fail
+  incomplete
+
+  @@map("outcome")
+}
+
+enum ExamType {
+  midterm
+  final
+  makeup
+
+  @@map("exam_type")
+}
+
+enum DutyRole {
+  chief
+  assistant
+  lab_instructor
+  ra
+  responsible
+
+  @@map("duty_role")
+}
+
+enum EndReason {
+  replaced
+  declined
+  schedule_superseded
+
+  @@map("end_reason")
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  excused
+
+  @@map("attendance_status")
+}
+
+enum PrefDecision {
+  accept
+  adjust
+  reject
+  added_by_department
+
+  @@map("pref_decision")
 }

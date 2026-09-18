@@ -32,10 +32,16 @@ import {
 
 export type Classification = "tenant" | "shared" | "global";
 
+export interface ManifestEntry {
+  model: string;
+  table: string;
+}
+
 export interface Manifest {
-  tenant: string[];
-  shared: string[];
-  global: string[];
+  tenant: ManifestEntry[];
+  shared: ManifestEntry[];
+  global: ManifestEntry[];
+  /** sha256 over the sorted table names per class. */
   hash: string;
 }
 
@@ -70,20 +76,19 @@ export function classify(dmmf: Dmmf): ClassifiedTable[] {
 }
 
 export function manifestHash(lists: Pick<Manifest, "tenant" | "shared" | "global">): string {
+  const names = (entries: ManifestEntry[]) => entries.map((e) => e.table).sort();
   const canonical = JSON.stringify({
-    tenant: [...lists.tenant].sort(),
-    shared: [...lists.shared].sort(),
-    global: [...lists.global].sort(),
+    tenant: names(lists.tenant),
+    shared: names(lists.shared),
+    global: names(lists.global),
   });
   return createHash("sha256").update(canonical).digest("hex");
 }
 
 export function buildManifest(tables: ClassifiedTable[]): Manifest {
-  const lists = {
-    tenant: tables.filter((t) => t.kind === "tenant").map((t) => t.table),
-    shared: tables.filter((t) => t.kind === "shared").map((t) => t.table),
-    global: tables.filter((t) => t.kind === "global").map((t) => t.table),
-  };
+  const entries = (kind: Classification): ManifestEntry[] =>
+    tables.filter((t) => t.kind === kind).map((t) => ({ model: t.model, table: t.table }));
+  const lists = { tenant: entries("tenant"), shared: entries("shared"), global: entries("global") };
   return { ...lists, hash: manifestHash(lists) };
 }
 
@@ -144,7 +149,9 @@ export function check(
   else if (manifest.hash !== fresh.hash)
     problems.push("prisma/rls-manifest.json is stale; run `npm run rls:gen`");
   if (manifest) {
-    const listed = new Set([...manifest.tenant, ...manifest.shared, ...manifest.global]);
+    const listed = new Set(
+      [...manifest.tenant, ...manifest.shared, ...manifest.global].map((e) => e.table),
+    );
     for (const t of tables) {
       if (!listed.has(t.table))
         problems.push(`model ${t.model} (${t.table}) is not classified in the manifest`);
