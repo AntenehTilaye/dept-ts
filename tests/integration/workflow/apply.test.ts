@@ -207,12 +207,12 @@ describe("workflow engine", () => {
       enabled: true,
       requiredFields: ["summary"],
     });
-    // recording effects: approve emits a notify no-op
     await apply(DEPT_CS, instance.id, "in_progress.submit", head, { fields: { summary: "x" } });
     recorded.length = 0;
     const done = await apply(DEPT_CS, instance.id, "review.approve", head, { comment: "fine" });
     expect(done).toMatchObject({ terminal: true, terminalCategory: "success" });
-    expect(recorded.map((r) => r.kind)).toEqual(["notify"]);
+    // notify became a real effect in the scheduler phase (no recipients here: the head has no person)
+    expect(recorded.map((r) => r.kind)).not.toContain("notify");
   });
 
   it("two concurrent branch completions serialise on the row lock and produce exactly one $join", async () => {

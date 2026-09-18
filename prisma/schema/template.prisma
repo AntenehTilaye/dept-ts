@@ -1,1 +1,41 @@
-// template models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Templates (design part 04 §13): versioned, logic-less mustache with channel variants and a
+// declared variable list validated at save time.
+
+/// Template identity; the active version is what render() uses. NULL departmentId = faculty
+/// (system) template overridable per department. SHARED.
+model Template {
+  id            String       @id @default(cuid())
+  departmentId  String?      @map("department_id")
+  department    Department?  @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  key           String
+  kind          TemplateKind
+  contextType   SubjectType? @map("context_type")
+  activeVersion Int?         @map("active_version")
+  isSystem      Boolean      @default(false) @map("is_system")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  versions TemplateVersion[]
+
+  @@unique([departmentId, key])
+  @@map("template")
+}
+
+/// Immutable version body: channel variants (inApp, emailSubject, emailBody, sms, document)
+/// and the declared variables. GLOBAL child of Template.
+model TemplateVersion {
+  id                    String        @id @default(cuid())
+  templateId            String        @map("template_id")
+  template              Template      @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  version               Int
+  channelVariantsJson   Json          @map("channel_variants_json")
+  declaredVariablesJson Json          @map("declared_variables_json")
+  format                String        @default("mustache")
+  locale                String        @default("en")
+  status                VersionStatus @default(draft)
+  createdBy             String?       @map("created_by")
+  createdAt             DateTime      @default(now()) @map("created_at")
+
+  @@unique([templateId, version])
+  @@map("template_version")
+}

@@ -1,1 +1,69 @@
-// notification models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Notifications (design part 04 §12): the one per-user inbox and the single acknowledgement /
+// decline mechanism, with per-channel deliveries and per-user channel preferences.
+
+/// One inbox entry per recipient; `dedupeKey` (required, unique) makes notify() idempotent. TENANT.
+model Notification {
+  id                String               @id @default(cuid())
+  departmentId      String               @map("department_id")
+  department        Department           @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  recipientPersonId String               @map("recipient_person_id")
+  recipient         Person               @relation(fields: [recipientPersonId], references: [id], onDelete: Cascade)
+  category          NotificationCategory
+  title             String
+  body              String
+  actionUrl         String?              @map("action_url")
+  subjectType       SubjectType?         @map("subject_type")
+  subjectId         String?              @map("subject_id")
+  templateKey       String?              @map("template_key")
+  ackRequired       Boolean              @default(false) @map("ack_required")
+  declinable        Boolean              @default(false)
+  acknowledgedAt    DateTime?            @map("acknowledged_at")
+  declinedAt        DateTime?            @map("declined_at")
+  declineReason     String?              @map("decline_reason")
+  readAt            DateTime?            @map("read_at")
+  dedupeKey         String               @unique @map("dedupe_key")
+  /// Channel variants rendered at notify() time (the variables are not kept), used by the deliveries.
+  renderedJson      Json?                @map("rendered_json")
+  createdAt         DateTime             @default(now()) @map("created_at")
+
+  deliveries NotificationDelivery[]
+
+  @@index([recipientPersonId, readAt, createdAt])
+  @@index([subjectType, subjectId, ackRequired])
+  @@index([departmentId])
+  @@map("notification")
+}
+
+/// Per-channel delivery state of a notification. TENANT.
+model NotificationDelivery {
+  id             String         @id @default(cuid())
+  departmentId   String         @map("department_id")
+  department     Department     @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  notificationId String         @map("notification_id")
+  notification   Notification   @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  channel        Channel
+  status         DeliveryStatus @default(pending)
+  attempts       Int            @default(0)
+  providerRef    String?        @map("provider_ref")
+  lastError      String?        @map("last_error")
+  sentAt         DateTime?      @map("sent_at")
+
+  @@unique([notificationId, channel])
+  @@index([status])
+  @@index([departmentId])
+  @@map("notification_delivery")
+}
+
+/// A user's channel switches per category (NULL category = all). GLOBAL.
+model ChannelPreference {
+  id             String                @id @default(cuid())
+  userId         String                @map("user_id")
+  category       NotificationCategory?
+  channel        Channel
+  enabled        Boolean               @default(true)
+  digest         Digest                @default(immediate)
+  quietHoursJson Json?                 @map("quiet_hours_json")
+
+  @@unique([userId, category, channel])
+  @@map("channel_preference")
+}

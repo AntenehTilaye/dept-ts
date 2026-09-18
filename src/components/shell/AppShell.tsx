@@ -10,6 +10,7 @@ export interface ShellProps {
   isAdmin: boolean;
   nav: NavItem[];
   departments: Array<{ slug: string; code: string; name: string }>;
+  inbox?: { unread: number; pendingAck: number } | null;
   children: ReactNode;
 }
 
@@ -22,6 +23,7 @@ export function AppShell({
   userEmail,
   isAdmin,
   departments,
+  inbox,
 }: ShellProps) {
   return (
     <div className="flex min-h-screen">
@@ -33,6 +35,7 @@ export function AppShell({
           userEmail={userEmail}
           isAdmin={isAdmin}
           departments={departments}
+          inbox={inbox}
         />
         <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
       </div>

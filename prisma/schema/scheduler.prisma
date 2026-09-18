@@ -1,1 +1,72 @@
-// scheduler models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Scheduler (design part 04 §11): reminder schedules and subscriptions, and the ScheduledJob
+// ledger written beside pg-boss in the same transaction.
+
+/// Named offset sets (−7/−3/−1/0/+1 days ...) with channels and an escalation rule. NULL
+/// departmentId = faculty default (system keys). SHARED.
+model ReminderSchedule {
+  id              String      @id @default(cuid())
+  departmentId    String?     @map("department_id")
+  department      Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  key             String
+  offsetsJson     Json        @map("offsets_json")
+  repeatEveryDays Int?        @map("repeat_every_days")
+  escalationJson  Json?       @map("escalation_json")
+  isDefault       Boolean     @default(false) @map("is_default")
+  isSystem        Boolean     @default(false) @map("is_system")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  @@unique([departmentId, key])
+  @@map("reminder_schedule")
+}
+
+/// A subject's reminder subscription: a deadline (fixed, calendar-anchored) or an interval
+/// while in given states, an audience and template variables. TENANT.
+model ReminderSubscription {
+  id                 String       @id @default(cuid())
+  departmentId       String       @map("department_id")
+  department         Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  subjectType        SubjectType  @map("subject_type")
+  subjectId          String       @map("subject_id")
+  kind               ReminderKind
+  deadlineSpecJson   Json         @map("deadline_spec_json")
+  resolvedDeadlineAt DateTime?    @map("resolved_deadline_at")
+  scheduleKey        String       @map("schedule_key")
+  audienceSpecJson   Json         @map("audience_spec_json")
+  variablesJson      Json         @default("{}") @map("variables_json")
+  active             Boolean      @default(true)
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  @@index([resolvedDeadlineAt, active])
+  @@index([subjectType, subjectId])
+  @@index([departmentId])
+  @@map("reminder_subscription")
+}
+
+/// Durable ledger beside pg-boss: every deferred job the platform requests, with its
+/// idempotency key, status and the pg-boss job id. SHARED (faculty crons have no department).
+model ScheduledJob {
+  id             String       @id @default(cuid())
+  departmentId   String?      @map("department_id")
+  department     Department?  @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  kind           JobKind
+  queue          String
+  subjectType    SubjectType? @map("subject_type")
+  subjectId      String?      @map("subject_id")
+  runAt          DateTime     @map("run_at")
+  payloadJson    Json         @default("{}") @map("payload_json")
+  idempotencyKey String       @unique @map("idempotency_key")
+  status         JobStatus    @default(scheduled)
+  attempts       Int          @default(0)
+  lastError      String?      @map("last_error")
+  pgBossJobId    String?      @map("pg_boss_job_id")
+  singletonKey   String?      @map("singleton_key")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@index([status, runAt])
+  @@index([kind, runAt])
+  @@index([departmentId])
+  @@map("scheduled_job")
+}

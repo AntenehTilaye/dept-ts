@@ -13,6 +13,9 @@ interface NavSpec {
 
 const NAV: NavSpec[] = [
   { path: "", label: "Overview" },
+  { path: "/inbox", label: "Inbox" },
+  { path: "/upcoming", label: "Upcoming" },
+  { path: "/settings/notifications", label: "Notification settings" },
   { path: "/people", label: "People", group: "Registry", permission: "staff.view" },
   { path: "/sections", label: "Sections", group: "Registry", permission: "academic.manage" },
   { path: "/calendar", label: "Calendar", group: "Registry", permission: "academic.manage" },

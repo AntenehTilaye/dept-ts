@@ -25,6 +25,7 @@ model Person {
   coordinatedOfferings CourseOffering[]     @relation("OfferingCoordinator")
   teachingAssignments  TeachingAssignment[]
   responsibleResources Resource[]           @relation("ResourceResponsible")
+  notifications        Notification[]
 
   @@index([email])
   @@index([fullName])
