@@ -1,0 +1,9 @@
+// Global enums. Values are lower_snake. Later phases append the remaining enums here.
+
+enum SettingScope {
+  global
+  department
+  program
+
+  @@map("setting_scope")
+}

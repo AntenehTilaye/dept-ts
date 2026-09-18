@@ -1,0 +1,15 @@
+// Identity & Access. GLOBAL (no departmentId, no RLS) unless stated otherwise.
+
+/// Typed configuration by scope. GLOBAL: filtered in the app; only admins and the worker
+/// heartbeat write.
+model SystemSetting {
+  key       String
+  scope     SettingScope
+  scopeId   String       @default("") @map("scope_id")
+  valueJson Json         @map("value_json")
+  updatedBy String?      @map("updated_by")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  @@id([key, scope, scopeId])
+  @@map("system_setting")
+}

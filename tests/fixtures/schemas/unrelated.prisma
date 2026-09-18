@@ -1,0 +1,8 @@
+/// departmentId without a relation to Department (must be reported).
+/// Loaded together with classification.prisma, which holds the datasource and generator.
+model Orphan {
+  id           String @id @default(cuid())
+  departmentId String @map("department_id")
+
+  @@map("orphan")
+}

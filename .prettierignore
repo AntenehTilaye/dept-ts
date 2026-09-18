@@ -1,0 +1,11 @@
+node_modules
+.next
+src/generated
+apps/worker/dist
+coverage
+tests/e2e/.results
+tests/e2e/.auth
+docs
+prisma/migrations
+package-lock.json
+*.md

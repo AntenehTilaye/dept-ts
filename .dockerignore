@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+apps/worker/dist
+tests/e2e/.results
+tests/e2e/.auth
+coverage
+docs
+*.md
+!README.md
+.env
+.env.test

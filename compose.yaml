@@ -1,0 +1,177 @@
+name: deptts
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql://dept_app:dept_app@db:5432/dept
+  DATABASE_URL_MIGRATE: postgresql://dept_migrator:dept_migrator@db:5432/dept
+  BETTER_AUTH_URL: http://localhost:3000
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-only-secret-please-change-0123456789}
+  SMTP_URL: smtp://mailpit:1025
+  MAIL_FROM: "DeptTS <noreply@deptts.local>"
+  MAILPIT_URL: http://mailpit:8025
+  UPLOAD_DIR: /data/uploads
+  APP_TIMEZONE: ${APP_TIMEZONE:-Africa/Addis_Ababa}
+  PG_POOL_MAX: ${PG_POOL_MAX:-10}
+  WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+  PDF_CONCURRENCY: ${PDF_CONCURRENCY:-2}
+  UPLOAD_MAX_MB: ${UPLOAD_MAX_MB:-25}
+  SEED_DEMO: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+x-git-env: &git-env
+  GIT_AUTHOR_NAME: ${GIT_AUTHOR_NAME:-DeptTS Dev}
+  GIT_AUTHOR_EMAIL: ${GIT_AUTHOR_EMAIL:-dev@deptts.local}
+  GIT_COMMITTER_NAME: ${GIT_AUTHOR_NAME:-DeptTS Dev}
+  GIT_COMMITTER_EMAIL: ${GIT_AUTHOR_EMAIL:-dev@deptts.local}
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dept"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit
+    ports: ["8025:8025", "1025:1025"]
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: dev
+    command: npm run dev
+    ports: ["3000:3000"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: [*app-env, *git-env]
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - next_dev:/app/.next
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://localhost:3000/api/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      target: dev
+    command: npm run worker:dev
+    init: true
+    ipc: host
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "apps/worker/healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+  # Vitest runner (unit, components, integration, worker) on the Playwright image
+  # so pdf handler tests have Chromium.
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      target: dev
+    init: true
+    ipc: host
+    env_file:
+      - path: .env.test
+        required: false
+    environment:
+      <<: *app-env
+      DATABASE_URL: postgresql://dept_app:dept_app@db:5432/dept_test
+      DATABASE_URL_MIGRATE: postgresql://dept_migrator:dept_migrator@db:5432/dept_test
+      UPLOAD_DIR: /tmp/uploads
+      SEED_DEMO: "0"
+      SEED_AUTO_PUBLISH: "1"
+      CI: "true"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  # Playwright runner; talks to the web service over the compose network.
+  e2e:
+    profiles: ["e2e"]
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      target: dev
+    init: true
+    ipc: host
+    environment:
+      BASE_URL: http://web:3000
+      MAILPIT_URL: http://mailpit:8025
+      DATABASE_URL: postgresql://dept_app:dept_app@db:5432/dept_e2e
+      DATABASE_URL_MIGRATE: postgresql://dept_migrator:dept_migrator@db:5432/dept_e2e
+      SEED_DEMO: "1"
+      SEED_AUTO_PUBLISH: "1"
+      CI: "true"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    depends_on:
+      web:
+        condition: service_healthy
+      worker:
+        condition: service_started
+
+volumes:
+  pgdata: {}
+  node_modules: {}
+  next_dev: {}
+  next_e2e: {}
+  uploads: {}
+  uploads_e2e: {}
