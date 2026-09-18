@@ -1,13 +1,7 @@
-import type { Route } from "next";
 import { pageContext } from "@/lib/auth/page";
 import { prismaRoot } from "@/lib/db/prisma";
+import { navFor } from "@/lib/nav";
 import { AppShell } from "@/components/shell/AppShell";
-import type { NavItem } from "@/components/shell/Sidebar";
-
-// Static navigation until the feature runtime provides getNav(actor, dept).
-function staticNav(deptSlug: string): NavItem[] {
-  return [{ href: `/d/${deptSlug}` as Route, label: "Overview" }];
-}
 
 export default async function DepartmentLayout(props: LayoutProps<"/d/[dept]">) {
   const { dept } = await props.params;
@@ -32,7 +26,7 @@ export default async function DepartmentLayout(props: LayoutProps<"/d/[dept]">) 
       userName={ctx.user.name}
       userEmail={ctx.user.email}
       isAdmin={ctx.isAdmin}
-      nav={staticNav(dept)}
+      nav={await navFor(ctx)}
       departments={departments}
     >
       {props.children}

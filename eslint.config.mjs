@@ -102,6 +102,7 @@ export default defineConfig([
     "apps/worker/dist/**",
     "coverage/**",
     "tests/e2e/.results/**",
+    "tests/e2e/.report/**",
     "tests/e2e/.auth/**",
     "docs/**",
   ]),

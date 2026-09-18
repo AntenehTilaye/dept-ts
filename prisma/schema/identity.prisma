@@ -13,18 +13,38 @@ model Department {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   code           String       @unique
   name           String
-  facultyName    String?  @map("faculty_name")
-  headPersonId   String?  @map("head_person_id")
-  timezone       String   @default("Africa/Addis_Ababa")
-  settingsJson   Json     @default("{}") @map("settings_json")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  facultyName    String?      @map("faculty_name")
+  headPersonId   String?      @map("head_person_id")
+  timezone       String       @default("Africa/Addis_Ababa")
+  settingsJson   Json         @default("{}") @map("settings_json")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
   // Back-relations from every tenant-scoped model (gen-rls --check verifies each departmentId
   // field has one). Later phases append to this list.
-  roles           Role[]
-  rolePermissions RolePermission[]
-  roleGrants      RoleGrant[]
+  roles               Role[]
+  rolePermissions     RolePermission[]
+  roleGrants          RoleGrant[]
+  persons             DepartmentPerson[]
+  staffProfiles       StaffProfile[]
+  profileItems        ProfileItem[]
+  students            Student[]
+  programs            Program[]
+  sections            Section[]
+  sectionMemberships  StudentSectionMembership[]
+  representatives     SectionRepresentative[]
+  groups              Group[]
+  groupMemberships    GroupMembership[]
+  academicYears       AcademicYear[]
+  terms               Term[]
+  calendarPeriods     CalendarPeriod[]
+  courses             Course[]
+  courseOfferings     CourseOffering[]
+  sectionOfferings    SectionOffering[]
+  teachingAssignments TeachingAssignment[]
+  enrollments         Enrollment[]
+  timetableSlots      ClassTimetableSlot[]
+  resources           Resource[]
 
   @@map("department")
 }

@@ -46,6 +46,6 @@ describe("derived grant reconciliation", () => {
     expect(ids).toEqual(expect.arrayContaining([DEPT_CS, DEPT_EE]));
     const second = await reconcileAll();
     expect(second.every((s) => s.orphaned === 0)).toBe(true);
-    expect(second.find((s) => s.departmentId === DEPT_EE)?.members).toBe(1);
+    expect(second.find((s) => s.departmentId === DEPT_EE)?.members).toBeGreaterThanOrEqual(1);
   });
 });

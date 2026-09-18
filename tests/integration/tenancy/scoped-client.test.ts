@@ -46,6 +46,23 @@ describe("scoped client", () => {
     expect(await cs.role.count({ where: mine })).toBe(2);
   });
 
+  it("raw queries run inside the department transaction too", async () => {
+    const rows = await cs.$queryRaw<
+      Array<{ key: string }>
+    >`SELECT key FROM role WHERE key LIKE 'sc#_%' ESCAPE '#' ORDER BY key`;
+    expect(rows.map((r) => r.key)).toEqual(["sc_cs_created", "sc_shared_global"]);
+    const unsafe = await cs.$queryRawUnsafe<Array<{ n: number }>>(
+      "SELECT count(*)::int AS n FROM role WHERE key LIKE $1",
+      "sc_%",
+    );
+    expect(unsafe[0]?.n).toBe(2);
+    const setting = await cs.$queryRaw<
+      Array<{ v: string }>
+    >`SELECT current_setting('app.current_department_id', true) AS v`;
+    expect(setting[0]?.v).toBe(DEPT_CS);
+    expect(await cs.$executeRaw`SELECT 1`).toBe(1);
+  });
+
   it("cross-department updates report count 0 and a faculty-wide write needs bypass", async () => {
     const res = await cs.role.updateMany({
       where: { key: "sc_ee_only" },

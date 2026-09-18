@@ -1,6 +1,7 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
 import {
+  canDo,
   ForbiddenError,
   requireAdmin,
   requireDeptContext,
@@ -8,6 +9,9 @@ import {
   type Ctx,
   type DeptCtx,
 } from "./require";
+import { getDb } from "../db/scoped";
+import type { Db } from "../db/types";
+import type { ActionVerb } from "@/platform/identity/levels";
 
 // Page/layout wrappers: map the typed errors to Next control flow. Unauthenticated -> login,
 // forbidden or unknown department -> 404 (never reveal that a department exists).
@@ -30,4 +34,21 @@ export async function adminPageContext(): Promise<Ctx> {
     if (error instanceof ForbiddenError) notFound();
     throw error;
   }
+}
+
+/** Page wrapper with a permission check: forbidden -> 404 like an unknown department. */
+export async function pageContextCan(
+  deptSlug: string,
+  permissionKey: string,
+  verb?: ActionVerb,
+): Promise<DeptCtx> {
+  const ctx = await pageContext(deptSlug);
+  const decision = await canDo(ctx, permissionKey, undefined, verb);
+  if (!decision.allowed) notFound();
+  return ctx;
+}
+
+/** The department-scoped read client for Server Components (actions use the transaction from safeAction). */
+export function dbOf(ctx: DeptCtx): Db {
+  return getDb(ctx.departmentId) as unknown as Db;
 }

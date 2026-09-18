@@ -104,6 +104,17 @@ export function forDepartment(departmentId: string) {
     client.$extends({
       name: `dept:${departmentId}`,
       query: {
+        // Raw queries carry no model: run them inside a department transaction too.
+        async $allOperations({ model, operation, args, query }) {
+          if (model) return query(args);
+          return client.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('app.current_department_id', ${departmentId}, true)`;
+            const raw = tx as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>;
+            const fn = raw[operation];
+            if (!fn) throw new Error(`Unsupported raw operation ${operation}`);
+            return Array.isArray(args) ? fn.call(tx, ...args) : fn.call(tx, args);
+          });
+        },
         $allModels: {
           async $allOperations({ model, operation, args }) {
             const scoped = TENANT_MODELS.has(model) || SHARED_MODELS.has(model);

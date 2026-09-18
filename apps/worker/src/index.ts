@@ -5,8 +5,10 @@ import { registerSchedules } from "./schedules";
 import { installShutdown } from "./shutdown";
 import { recordHeartbeat, touchHeartbeatFile } from "./handlers/worker-heartbeat";
 import { QUEUES } from "@/platform/scheduler/queues";
+import { bootstrap } from "@/lib/bootstrap";
 
 async function main() {
+  bootstrap();
   const boss = await startWorkerBoss();
   console.log(
     `[worker] pg-boss started on schema "${process.env.PGBOSS_SCHEMA ?? "pgboss"}"; queues: ${QUEUES.map((q) => q.name).join(", ")}`,
