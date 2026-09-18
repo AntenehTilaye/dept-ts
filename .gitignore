@@ -1,0 +1,35 @@
+# dependencies and build output (all live in Docker named volumes)
+node_modules/
+.next/
+out/
+apps/worker/dist/
+src/generated/
+next-env.d.ts
+*.tsbuildinfo
+
+# environment
+.env
+.env.test
+.env.*.local
+
+# test output
+coverage/
+tests/e2e/.auth/
+tests/e2e/.results/
+tests/e2e/.report/
+playwright-report/
+test-results/
+
+# generated fixtures (built by tests/fixtures/build-fixtures.ts)
+tests/fixtures/*.xlsx
+tests/fixtures/*.csv
+
+# uploads (Docker volume) and local data
+data/
+uploads/
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

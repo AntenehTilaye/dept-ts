@@ -1,0 +1,12 @@
+// Multi-file schema: every other model lives in a sibling *.prisma file in this folder.
+// The datasource URL is set in prisma.config.ts (Prisma 7).
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../../src/generated/prisma"
+  moduleFormat = "esm"
+  runtime      = "nodejs"
+}

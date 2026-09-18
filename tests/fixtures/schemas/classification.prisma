@@ -1,0 +1,46 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../../src/generated/prisma"
+}
+
+model Department {
+  id         String        @id
+  name       String
+  strictRows StrictThing[]
+  sharedRows SharedThing[]
+
+  @@map("department")
+}
+
+/// required departmentId -> tenant
+model StrictThing {
+  id           String     @id @default(cuid())
+  departmentId String     @map("department_id")
+  department   Department @relation(fields: [departmentId], references: [id])
+  label        String
+
+  @@index([departmentId])
+  @@map("strict_thing")
+}
+
+/// optional departmentId -> shared
+model SharedThing {
+  id           String      @id @default(cuid())
+  departmentId String?     @map("department_id")
+  department   Department? @relation(fields: [departmentId], references: [id])
+  key          String
+
+  @@map("shared_thing")
+}
+
+/// no departmentId -> global
+model GlobalThing {
+  id   String @id @default(cuid())
+  note String
+
+  @@map("global_thing")
+}

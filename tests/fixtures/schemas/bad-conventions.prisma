@@ -1,0 +1,20 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../../src/generated/prisma"
+}
+
+enum Bad {
+  Yes
+  no
+}
+
+model NoMap {
+  id       String @id @default(cuid())
+  fullName String
+  metaJson Json
+  kind     Bad
+}

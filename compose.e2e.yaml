@@ -1,0 +1,31 @@
+# Override for end-to-end runs: production build of the web app on the dept_e2e database,
+# with its own .next and uploads volumes so dev data is never touched.
+#   docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait web worker
+#   docker compose -f compose.yaml -f compose.e2e.yaml --profile e2e run --rm e2e npx playwright test
+#   docker compose -f compose.yaml -f compose.e2e.yaml down
+services:
+  web:
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed && npm run build && npm run start"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://dept_app:dept_app@db:5432/dept_e2e
+      DATABASE_URL_MIGRATE: postgresql://dept_migrator:dept_migrator@db:5432/dept_e2e
+      BETTER_AUTH_URL: http://web:3000
+      BETTER_AUTH_TRUSTED_ORIGINS: http://localhost:3000
+      SEED_DEMO: "1"
+      SEED_AUTO_PUBLISH: "1"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - next_e2e:/app/.next
+      - uploads_e2e:/data/uploads
+    healthcheck:
+      start_period: 300s
+  worker:
+    environment:
+      DATABASE_URL: postgresql://dept_app:dept_app@db:5432/dept_e2e
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - uploads_e2e:/data/uploads

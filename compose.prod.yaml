@@ -1,0 +1,84 @@
+# Production stack: standalone Next web image, bundled worker with Chromium, PostgreSQL,
+# and a one-off migrate service. Secrets come from the host environment or Docker secrets.
+#   docker compose -f compose.prod.yaml build web worker
+#   docker compose -f compose.prod.yaml --profile ops run --rm migrate
+#   docker compose -f compose.prod.yaml up -d
+name: deptts-prod
+
+x-app-env: &app-env
+  DATABASE_URL: ${DATABASE_URL:-postgresql://dept_app:dept_app@db:5432/dept}
+  DATABASE_URL_MIGRATE: ${DATABASE_URL_MIGRATE:-postgresql://dept_migrator:dept_migrator@db:5432/dept}
+  BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me}
+  SMTP_URL: ${SMTP_URL:-smtp://smtp.example.edu:587}
+  MAIL_FROM: ${MAIL_FROM:-DeptTS <noreply@example.edu>}
+  UPLOAD_DIR: /data/uploads
+  APP_TIMEZONE: ${APP_TIMEZONE:-Africa/Addis_Ababa}
+  PG_POOL_MAX: ${PG_POOL_MAX:-10}
+  WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+  PDF_CONCURRENCY: ${PDF_CONCURRENCY:-2}
+  UPLOAD_MAX_MB: ${UPLOAD_MAX_MB:-25}
+  NEXT_TELEMETRY_DISABLED: "1"
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dept"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    profiles: ["ops"]
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: migrate
+    environment:
+      <<: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: runner
+    environment:
+      <<: *app-env
+    ports: ["3000:3000"]
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      target: runner
+    init: true
+    ipc: host
+    environment:
+      <<: *app-env
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata: {}
+  uploads: {}
