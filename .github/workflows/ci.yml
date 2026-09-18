@@ -1,0 +1,84 @@
+# Continuous integration for DeptTS. Manual-only for now (workflow_dispatch): the user asked for
+# the file to exist without running on GitHub yet. When it is switched on, change `on:` to
+#   push: { branches: [main] } / pull_request: { branches: [main] }
+# The steps mirror the phase verification sequence run inside Docker (README.md).
+name: CI
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Check, unit, integration, worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare environment files
+        run: |
+          cp .env.example .env
+          cp .env.test.example .env.test
+          sed -i 's/^BETTER_AUTH_SECRET=.*/BETTER_AUTH_SECRET=ci-secret-ci-secret-ci-secret-1234/' .env
+
+      - name: Build the dev image and install dependencies
+        run: |
+          docker compose build web
+          docker compose run --rm --no-deps web npm ci
+
+      - name: Start database and mail
+        run: docker compose up -d --wait db mailpit
+
+      - name: Migrate and seed
+        run: |
+          docker compose run --rm web npx prisma migrate deploy
+          docker compose run --rm web npx prisma db seed
+
+      - name: Static checks
+        run: docker compose run --rm --no-deps web sh -c "npx prisma validate && npm run schema:check && npx next typegen && npx tsc --noEmit && npx eslint . && npm run rls:check"
+
+      - name: Tests with coverage thresholds
+        run: docker compose --profile test run --rm test npm run test:coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+
+  e2e:
+    name: End-to-end (production build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare environment files
+        run: |
+          cp .env.example .env
+          cp .env.test.example .env.test
+          sed -i 's/^BETTER_AUTH_SECRET=.*/BETTER_AUTH_SECRET=ci-secret-ci-secret-ci-secret-1234/' .env
+      - name: Build images and install dependencies
+        run: |
+          docker compose build web worker
+          docker compose run --rm --no-deps web npm ci
+      - name: Start the e2e stack
+        run: docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait web worker
+      - name: Playwright
+        run: docker compose -f compose.yaml -f compose.e2e.yaml --profile e2e run --rm e2e npx playwright test
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: tests/e2e/.report/
+          if-no-files-found: ignore
+      - name: Stop the stack
+        if: always()
+        run: docker compose -f compose.yaml -f compose.e2e.yaml down

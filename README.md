@@ -50,3 +50,7 @@ Docker Desktop with the WSL2 backend. `node_modules`, `.next`, uploads and the d
 named volumes; the source is bind-mounted with polling file watchers. If HMR misses edits, use
 `docker compose watch` (sync mode) or clone the repository into the WSL2 filesystem and run the
 same commands there.
+
+## Git workflow
+
+Work happens on branches (`feat/p<N>-<topic>`, `fix/<topic>`), one verified phase per branch, merged into `main` through a pull request. `.github/workflows/ci.yml` mirrors the verification sequence but is manual-only (`workflow_dispatch`) until CI is switched on.
