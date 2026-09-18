@@ -80,6 +80,7 @@ describe("gen-rls classification", () => {
     const manifest = readManifest();
     expect(manifest).not.toBeNull();
     expect(manifest!.hash).toBe(buildManifest(tables).hash);
-    expect(manifest!.global).toContain("system_setting");
+    expect(manifest!.global).toContainEqual({ model: "SystemSetting", table: "system_setting" });
+    expect(manifest!.shared).toContainEqual({ model: "Role", table: "role" });
   });
 });

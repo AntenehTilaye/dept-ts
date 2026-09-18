@@ -4,6 +4,8 @@ import { join } from "node:path";
 import type { PgBoss } from "pg-boss";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { QUEUES, queueSpec } from "@/platform/scheduler/queues";
+import { ensureQueues, getBoss } from "@/lib/db/boss";
+import { inject } from "vitest";
 import {
   HEARTBEAT_SETTING_KEY,
   recordHeartbeat,
@@ -49,6 +51,18 @@ describe("worker heartbeat", () => {
     expect(new Date(setting!.valueJson as string).getTime()).toBeGreaterThanOrEqual(
       before.getTime() - 1000,
     );
+  });
+
+  it("the web's send-only client enqueues a job the worker boss completes; ensureQueues is idempotent", async () => {
+    process.env.PGBOSS_SCHEMA = inject("bossSchema");
+    const sender = await getBoss();
+    expect(await getBoss()).toBe(sender);
+    await ensureQueues(sender);
+    const id = await sender.send("worker.heartbeat", {});
+    expect(id).toBeTruthy();
+    const job = await awaitJob(boss, "worker.heartbeat", id!);
+    expect(job.state).toBe("completed");
+    await sender.stop({ graceful: false, timeout: 2_000 });
   });
 
   it("touches the heartbeat file and upserts idempotently", async () => {

@@ -11,8 +11,14 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reportsDirectory: "coverage",
-      include: ["src/platform/**", "apps/worker/src/handlers/**"],
-      exclude: ["src/generated/**", "**/*.d.ts", "**/types.ts", "**/index.ts"],
+      include: ["src/platform/**", "src/lib/db/**", "apps/worker/src/handlers/**"],
+      exclude: [
+        "src/generated/**",
+        "**/*.d.ts",
+        "**/types.ts",
+        "**/index.ts",
+        "src/lib/db/json-schemas.ts",
+      ],
       thresholds: {
         lines: 80,
         functions: 80,
