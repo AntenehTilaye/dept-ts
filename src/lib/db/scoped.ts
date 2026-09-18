@@ -131,3 +131,15 @@ export type ScopedClient = ReturnType<typeof scopedClient>;
 export function scopedClient(departmentId: string, base: PrismaClient = prismaRoot) {
   return base.$extends(forDepartment(departmentId));
 }
+
+const scopedCache = new Map<string, ScopedClient>();
+
+/** Request-cached scoped client for a department id (Server Components; actions use withTenantTx). */
+export function getDb(departmentId: string): ScopedClient {
+  let db = scopedCache.get(departmentId);
+  if (!db) {
+    db = scopedClient(departmentId);
+    scopedCache.set(departmentId, db);
+  }
+  return db;
+}

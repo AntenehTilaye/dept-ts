@@ -3,7 +3,18 @@ import { loadDmmf, tableName } from "../../prisma/scripts/dmmf";
 
 // Tables that hold seed data and survive per-file truncation. Later phases append
 // roles, permissions, templates, forms, workflows and feature definitions.
-export const SEED_TABLES = new Set<string>(["system_setting", "department"]);
+export const SEED_TABLES = new Set<string>([
+  "system_setting",
+  "department",
+  "organization",
+  "permission",
+  "role",
+  "role_permission",
+  "user",
+  "account",
+  "member",
+  "role_grant",
+]);
 
 let cached: string[] | undefined;
 
