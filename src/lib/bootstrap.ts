@@ -9,6 +9,10 @@ import { registerAcademicSubjects } from "@/platform/academic/subject";
 import { registerPeopleSubjects } from "@/platform/people/subject";
 import { isRegistered, resolverWith } from "@/platform/subject-registry";
 import { setEnginePolicyStore } from "@/platform/workflow/engine";
+import { installSchedulerEffects } from "@/platform/scheduler/effects";
+import { installSchedulerSubscribers } from "@/platform/scheduler/subscribers";
+import { setPeriodDependentsResolver } from "@/platform/academic/calendar";
+import { dependentsOfPeriod } from "@/platform/scheduler/reminders";
 
 // Process-wide registrations, loaded once by src/instrumentation.ts (web) and the worker entry
 // point. Idempotent so hot reloads and tests may call it repeatedly.
@@ -24,6 +28,15 @@ export function bootstrap(): void {
   setSubjectResolver(resolverWith((departmentId) => getDb(departmentId) as unknown as Db));
   setEnginePolicyStore(dbPolicyStore);
   installGrantSubscribers();
+  installSchedulerEffects();
+  installSchedulerSubscribers();
+  setPeriodDependentsResolver(async (db, periodId) =>
+    (await dependentsOfPeriod(db, periodId)).map((s) => ({
+      kind: "reminder",
+      id: s.id,
+      label: `${s.subjectType} ${s.subjectId} (${s.scheduleKey})`,
+    })),
+  );
   // every tenant bypass leaves an audit row (the reason names the caller)
   setBypassAuditor(async (tx, actor, reason) => {
     await record(tx, {

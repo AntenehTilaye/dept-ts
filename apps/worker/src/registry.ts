@@ -1,10 +1,34 @@
 import type { PgBoss } from "pg-boss";
 import type { WorkerHandler } from "./handlers/types";
+import calendarAutotransition from "./handlers/calendar-autotransition";
+import emailDead from "./handlers/email-dead";
+import emailSend from "./handlers/email-send";
+import grantReconcile from "./handlers/grant-reconcile";
+import notificationDeliver from "./handlers/notification-deliver";
+import outboxDispatch from "./handlers/outbox-dispatch";
+import overdueSweep from "./handlers/overdue-sweep";
+import reminderFire from "./handlers/reminder-fire";
+import reminderMaterialize from "./handlers/reminder-materialize";
+import retentionRun from "./handlers/retention-run";
 import workerHeartbeat from "./handlers/worker-heartbeat";
+import workflowAutoTransition from "./handlers/workflow-auto-transition";
 
 // One default export per queue, file named after the queue with "." -> "-".
 // Later phases append their handlers here.
-export const HANDLERS: readonly WorkerHandler[] = [workerHeartbeat];
+export const HANDLERS: readonly WorkerHandler[] = [
+  outboxDispatch,
+  reminderMaterialize,
+  reminderFire,
+  notificationDeliver,
+  emailSend,
+  emailDead,
+  workflowAutoTransition,
+  overdueSweep,
+  calendarAutotransition,
+  grantReconcile,
+  retentionRun,
+  workerHeartbeat,
+] as WorkerHandler[];
 
 export async function registerHandlers(
   boss: PgBoss,

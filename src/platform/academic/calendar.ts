@@ -2,6 +2,7 @@ import type { PeriodKind, TermOrdinal } from "@/generated/prisma/enums";
 import { fromJson, toJson } from "../../lib/db/json";
 import { globalSingleton } from "../../lib/singleton";
 import type { Db } from "../../lib/db/types";
+import { publish } from "../audit/outbox";
 import {
   defaultQuarters,
   quarterOf,
@@ -157,6 +158,14 @@ export async function setPeriod(db: Db, departmentId: string, input: PeriodInput
   const period = input.id
     ? await db.calendarPeriod.update({ where: { id: input.id }, data })
     : await db.calendarPeriod.create({ data: { departmentId, termId: input.termId, ...data } });
+  // subscribers (reminder re-anchoring, campaign windows) react through the outbox
+  await publish(
+    db,
+    "calendar.period.changed",
+    { subjectType: "calendar_period", subjectId: period.id },
+    { termId: period.termId, kind: period.kind, startAt: period.startAt, endAt: period.endAt },
+    { departmentId },
+  );
   return { period, dependents: await dependents.resolve(db, period.id) };
 }
 

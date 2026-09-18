@@ -37,12 +37,24 @@
       "table": "group_membership"
     },
     {
+      "model": "Notification",
+      "table": "notification"
+    },
+    {
+      "model": "NotificationDelivery",
+      "table": "notification_delivery"
+    },
+    {
       "model": "ProfileItem",
       "table": "profile_item"
     },
     {
       "model": "Program",
       "table": "program"
+    },
+    {
+      "model": "ReminderSubscription",
+      "table": "reminder_subscription"
     },
     {
       "model": "Resource",
@@ -103,12 +115,24 @@
       "table": "domain_event"
     },
     {
+      "model": "ReminderSchedule",
+      "table": "reminder_schedule"
+    },
+    {
       "model": "Role",
       "table": "role"
     },
     {
       "model": "RolePermission",
       "table": "role_permission"
+    },
+    {
+      "model": "ScheduledJob",
+      "table": "scheduled_job"
+    },
+    {
+      "model": "Template",
+      "table": "template"
     },
     {
       "model": "WorkflowDefinition",
@@ -119,6 +143,10 @@
     {
       "model": "Account",
       "table": "account"
+    },
+    {
+      "model": "ChannelPreference",
+      "table": "channel_preference"
     },
     {
       "model": "Department",
@@ -157,6 +185,10 @@
       "table": "system_setting"
     },
     {
+      "model": "TemplateVersion",
+      "table": "template_version"
+    },
+    {
       "model": "User",
       "table": "user"
     },
@@ -165,5 +197,5 @@
       "table": "verification"
     }
   ],
-  "hash": "0c1f91135d5044ed1e289fa97e0732512e1b0a152dfa23f63cd10db457a57002"
+  "hash": "96580bae72fdfab601606b32e88f19227062494f6d02e615b0179a135d28ceac"
 }

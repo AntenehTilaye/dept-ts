@@ -23,4 +23,36 @@ export const jsonSchemas: Record<string, ZodType> = {
     .nullable(),
   "AuditEvent.clientInfoJson": z.record(z.string(), z.unknown()).nullable(),
   "DomainEvent.payloadJson": z.unknown(),
+  "ReminderSchedule.offsetsJson": z.array(
+    z.object({
+      offsetDays: z.number().int(),
+      templateKey: z.string(),
+      channels: z.array(z.enum(["in_app", "email", "sms"])),
+    }),
+  ),
+  "ReminderSchedule.escalationJson": z
+    .object({ afterOverdueDays: z.number().int().min(1), toRoleKey: z.string() })
+    .nullable(),
+  "ReminderSubscription.deadlineSpecJson": z.unknown(),
+  "ReminderSubscription.audienceSpecJson": z.record(z.string(), z.unknown()),
+  "ReminderSubscription.variablesJson": z.record(z.string(), z.unknown()),
+  "ScheduledJob.payloadJson": z.unknown(),
+  "Notification.renderedJson": z
+    .object({
+      emailSubject: z.string().optional(),
+      emailBody: z.string().optional(),
+      sms: z.string().optional(),
+    })
+    .nullable(),
+  "ChannelPreference.quietHoursJson": z.object({ from: z.string(), to: z.string() }).nullable(),
+  "TemplateVersion.channelVariantsJson": z.object({
+    inApp: z.string().optional(),
+    emailSubject: z.string().optional(),
+    emailBody: z.string().optional(),
+    sms: z.string().optional(),
+    document: z.string().optional(),
+  }),
+  "TemplateVersion.declaredVariablesJson": z.array(
+    z.object({ name: z.string(), required: z.boolean(), type: z.string().optional() }),
+  ),
 };

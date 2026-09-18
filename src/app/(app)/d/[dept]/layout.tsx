@@ -1,6 +1,7 @@
-import { pageContext } from "@/lib/auth/page";
+import { dbOf, pageContext } from "@/lib/auth/page";
 import { prismaRoot } from "@/lib/db/prisma";
 import { navFor } from "@/lib/nav";
+import { unreadCount } from "@/platform/scheduler/inbox";
 import { AppShell } from "@/components/shell/AppShell";
 
 export default async function DepartmentLayout(props: LayoutProps<"/d/[dept]">) {
@@ -19,6 +20,7 @@ export default async function DepartmentLayout(props: LayoutProps<"/d/[dept]">) 
       : memberships.filter((m) => m.organization.department).map((m) => m.organization.department!)
   ).map((d) => ({ slug: d.code.toLowerCase(), code: d.code, name: d.name }));
 
+  const inbox = ctx.personId ? await unreadCount(dbOf(ctx), ctx.personId) : null;
   return (
     <AppShell
       deptSlug={dept}
@@ -27,6 +29,7 @@ export default async function DepartmentLayout(props: LayoutProps<"/d/[dept]">) 
       userEmail={ctx.user.email}
       isAdmin={ctx.isAdmin}
       nav={await navFor(ctx)}
+      inbox={inbox}
       departments={departments}
     >
       {props.children}
