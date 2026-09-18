@@ -80,6 +80,10 @@ export const requireDeptContext = cache(async (deptSlug: string): Promise<DeptCt
   const roleKeys = new Set<RoleKey>(orgRoles);
   for (const g of grants) roleKeys.add(g.roleKey as RoleKey);
   if (ctx.isAdmin) roleKeys.add("admin");
+  const person = await prismaRoot.person.findUnique({
+    where: { userId: ctx.user.id },
+    select: { id: true },
+  });
   return {
     ...ctx,
     departmentId: org.id,
@@ -87,7 +91,7 @@ export const requireDeptContext = cache(async (deptSlug: string): Promise<DeptCt
     departmentName: org.department.name,
     orgRoles,
     roleKeys: Array.from(roleKeys),
-    personId: null,
+    personId: person?.id ?? null,
   };
 });
 

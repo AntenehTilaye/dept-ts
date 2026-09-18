@@ -12,26 +12,17 @@ import {
 // (database-backed in src/lib/auth, in-memory in unit tests) and subject context from an
 // injected SubjectResolver (the SubjectRegistry from the registry phase on).
 
-export interface SubjectRef {
-  subjectType: string;
-  subjectId: string;
-}
+import type { SubjectContext, SubjectRef } from "../subject-registry/types";
 
-/** The scope ids a subject lives in, as reported by SubjectRegistry.contextOf. */
-export interface SubjectContext {
-  departmentId?: string;
-  committeeId?: string;
-  sectionId?: string;
-  programId?: string;
-  sectionOfferingId?: string;
-  labScheduleId?: string;
-  meetingId?: string;
-  featureRecordId?: string;
-}
+export type { SubjectContext, SubjectRef };
 
 export interface SubjectResolver {
-  contextOf(ref: SubjectRef): Promise<SubjectContext>;
-  relationships(ref: SubjectRef, personId: string | null): Promise<Relationship[]>;
+  contextOf(ref: SubjectRef, departmentId: string): Promise<SubjectContext>;
+  relationships(
+    ref: SubjectRef,
+    personId: string | null,
+    departmentId: string,
+  ): Promise<Relationship[]>;
 }
 
 export interface Actor {
@@ -148,7 +139,7 @@ export async function can(
       return { allowed: false, level: "none", reason: `explicit deny for ${g.roleKey}` };
 
   // 2. which grants apply: department-wide always; scoped ones only inside the subject's context
-  const context = subjectRef ? await resolver.contextOf(subjectRef) : {};
+  const context = subjectRef ? await resolver.contextOf(subjectRef, actor.departmentId) : {};
   if (subjectRef && context.departmentId && context.departmentId !== actor.departmentId) {
     return { allowed: false, level: "none", reason: "subject belongs to another department" };
   }
@@ -174,7 +165,9 @@ export async function can(
     else if (level === "assigned" && g.scopeType !== "department" && g.scopeType !== "global")
       ok = true; // scoped grant already proves membership
     else if (subjectRef) {
-      rels ??= new Set(await resolver.relationships(subjectRef, actor.personId));
+      rels ??= new Set(
+        await resolver.relationships(subjectRef, actor.personId, actor.departmentId),
+      );
       ok = relationshipSatisfies(level, rels);
     }
     if (ok) {

@@ -1,8 +1,88 @@
 {
   "tenant": [
     {
+      "model": "AcademicYear",
+      "table": "academic_year"
+    },
+    {
+      "model": "CalendarPeriod",
+      "table": "calendar_period"
+    },
+    {
+      "model": "ClassTimetableSlot",
+      "table": "class_timetable_slot"
+    },
+    {
+      "model": "Course",
+      "table": "course"
+    },
+    {
+      "model": "CourseOffering",
+      "table": "course_offering"
+    },
+    {
+      "model": "DepartmentPerson",
+      "table": "department_person"
+    },
+    {
+      "model": "Enrollment",
+      "table": "enrollment"
+    },
+    {
+      "model": "Group",
+      "table": "group"
+    },
+    {
+      "model": "GroupMembership",
+      "table": "group_membership"
+    },
+    {
+      "model": "ProfileItem",
+      "table": "profile_item"
+    },
+    {
+      "model": "Program",
+      "table": "program"
+    },
+    {
+      "model": "Resource",
+      "table": "resource"
+    },
+    {
       "model": "RoleGrant",
       "table": "role_grant"
+    },
+    {
+      "model": "Section",
+      "table": "section"
+    },
+    {
+      "model": "SectionOffering",
+      "table": "section_offering"
+    },
+    {
+      "model": "SectionRepresentative",
+      "table": "section_representative"
+    },
+    {
+      "model": "StaffProfile",
+      "table": "staff_profile"
+    },
+    {
+      "model": "Student",
+      "table": "student"
+    },
+    {
+      "model": "StudentSectionMembership",
+      "table": "student_section_membership"
+    },
+    {
+      "model": "TeachingAssignment",
+      "table": "teaching_assignment"
+    },
+    {
+      "model": "Term",
+      "table": "term"
     }
   ],
   "shared": [
@@ -41,6 +121,10 @@
       "table": "permission"
     },
     {
+      "model": "Person",
+      "table": "person"
+    },
+    {
       "model": "Session",
       "table": "session"
     },
@@ -57,5 +141,5 @@
       "table": "verification"
     }
   ],
-  "hash": "edc7154e42692284ac46c6214b633e00a7b08ef672d7f35b543fd056de3b4b64"
+  "hash": "4ae06ef4c67703b797b106198df0878d80a576dc55a9081b435071ff9fb514f2"
 }

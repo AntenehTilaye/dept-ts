@@ -1,1 +1,236 @@
-// academic models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Academic Registry & Calendar (design part 04 §5). All TENANT.
+
+/// Academic year with its four quarter boundaries (used by quarterly reports). TENANT.
+model AcademicYear {
+  id                    String     @id @default(cuid())
+  departmentId          String     @map("department_id")
+  department            Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  code                  String
+  startDate             DateTime   @map("start_date") @db.Date
+  endDate               DateTime   @map("end_date") @db.Date
+  quarterBoundariesJson Json       @map("quarter_boundaries_json")
+  status                YearStatus @default(planned)
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime   @updatedAt @map("updated_at")
+
+  terms              Term[]
+  sections           Section[]
+  sectionMemberships StudentSectionMembership[]
+  representatives    SectionRepresentative[]
+
+  @@unique([departmentId, code])
+  @@map("academic_year")
+}
+
+/// Semester / summer term of an academic year. TENANT.
+model Term {
+  id             String       @id @default(cuid())
+  departmentId   String       @map("department_id")
+  department     Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  academicYearId String       @map("academic_year_id")
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  ordinal        TermOrdinal
+  name           String
+  startDate      DateTime     @map("start_date") @db.Date
+  endDate        DateTime     @map("end_date") @db.Date
+  status         TermStatus   @default(planned)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  periods        CalendarPeriod[]
+  offerings      CourseOffering[]
+  timetableSlots ClassTimetableSlot[]
+
+  @@unique([academicYearId, ordinal])
+  @@index([departmentId, status])
+  @@map("term")
+}
+
+/// Typed calendar window inside a term (registration, add/drop, examination, ...). TENANT.
+model CalendarPeriod {
+  id           String     @id @default(cuid())
+  departmentId String     @map("department_id")
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  termId       String     @map("term_id")
+  term         Term       @relation(fields: [termId], references: [id], onDelete: Cascade)
+  kind         PeriodKind
+  label        String
+  startAt      DateTime   @map("start_at")
+  endAt        DateTime   @map("end_at")
+
+  @@index([termId, kind])
+  @@index([departmentId])
+  @@map("calendar_period")
+}
+
+/// Course in the catalogue with predecessor lineage (a revised course keeps its history). TENANT.
+model Course {
+  id                  String       @id @default(cuid())
+  departmentId        String       @map("department_id")
+  department          Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  code                String
+  title               String
+  creditHours         Decimal      @map("credit_hours") @db.Decimal(4, 1)
+  programId           String?      @map("program_id")
+  program             Program?     @relation(fields: [programId], references: [id], onDelete: SetNull)
+  courseType          CourseType   @map("course_type")
+  predecessorCourseId String?      @map("predecessor_course_id")
+  predecessor         Course?      @relation("CourseLineage", fields: [predecessorCourseId], references: [id], onDelete: SetNull)
+  successors          Course[]     @relation("CourseLineage")
+  status              CourseStatus @default(active)
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  offerings CourseOffering[]
+
+  @@unique([departmentId, code])
+  @@map("course")
+}
+
+/// A course taught in a term. `featureRecordId` becomes NOT NULL when the course_offering
+/// feature is seeded (assessment phase); `schemeStructureLockedAt` is a derived cache. TENANT.
+model CourseOffering {
+  id                      String     @id @default(cuid())
+  departmentId            String     @map("department_id")
+  department              Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  courseId                String     @map("course_id")
+  course                  Course     @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  termId                  String     @map("term_id")
+  term                    Term       @relation(fields: [termId], references: [id], onDelete: Restrict)
+  coordinatorPersonId     String?    @map("coordinator_person_id")
+  coordinator             Person?    @relation("OfferingCoordinator", fields: [coordinatorPersonId], references: [id], onDelete: SetNull)
+  featureRecordId         String?    @unique @map("feature_record_id")
+  decisionNote            String?    @map("decision_note")
+  schemeStructureLockedAt DateTime?  @map("scheme_structure_locked_at")
+  createdAt               DateTime   @default(now()) @map("created_at")
+  updatedAt               DateTime   @updatedAt @map("updated_at")
+
+  sectionOfferings SectionOffering[]
+
+  @@unique([courseId, termId])
+  @@index([termId])
+  @@index([departmentId])
+  @@map("course_offering")
+}
+
+/// A course offering delivered to one cohort section. TENANT.
+model SectionOffering {
+  id                            String         @id @default(cuid())
+  departmentId                  String         @map("department_id")
+  department                    Department     @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  courseOfferingId              String         @map("course_offering_id")
+  courseOffering                CourseOffering @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  sectionId                     String         @map("section_id")
+  section                       Section        @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  sectionCode                   String         @map("section_code")
+  enrolledCount                 Int            @default(0) @map("enrolled_count")
+  assessmentLockedAt            DateTime?      @map("assessment_locked_at")
+  assessmentLockedByPortfolioId String?        @map("assessment_locked_by_portfolio_id")
+
+  teachingAssignments TeachingAssignment[]
+  enrollments         Enrollment[]
+  timetableSlots      ClassTimetableSlot[]
+
+  @@unique([courseOfferingId, sectionId])
+  @@index([sectionId])
+  @@index([departmentId])
+  @@map("section_offering")
+}
+
+/// The one teaching-assignment table (manual, load import, preference review). TENANT.
+model TeachingAssignment {
+  id                String           @id @default(cuid())
+  departmentId      String           @map("department_id")
+  department        Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  sectionOfferingId String           @map("section_offering_id")
+  sectionOffering   SectionOffering  @relation(fields: [sectionOfferingId], references: [id], onDelete: Cascade)
+  personId          String           @map("person_id")
+  person            Person           @relation(fields: [personId], references: [id], onDelete: Restrict)
+  role              TeachingRole
+  loadHours         Decimal?         @map("load_hours") @db.Decimal(5, 2)
+  sharePercent      Int?             @map("share_percent")
+  source            AssignmentSource
+  importBatchId     String?          @map("import_batch_id")
+  validFrom         DateTime         @default(now()) @map("valid_from")
+  validTo           DateTime?        @map("valid_to")
+
+  timetableSlots ClassTimetableSlot[]
+
+  @@unique([sectionOfferingId, personId, role, validFrom])
+  @@index([personId, validTo])
+  @@index([departmentId])
+  @@map("teaching_assignment")
+}
+
+/// Student enrolment in a section offering (roster imports and add/drop decisions). TENANT.
+model Enrollment {
+  id                  String           @id @default(cuid())
+  departmentId        String           @map("department_id")
+  department          Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  sectionOfferingId   String           @map("section_offering_id")
+  sectionOffering     SectionOffering  @relation(fields: [sectionOfferingId], references: [id], onDelete: Cascade)
+  studentId           String           @map("student_id")
+  student             Student          @relation(fields: [studentId], references: [personId], onDelete: Cascade)
+  status              EnrollmentStatus
+  source              EnrollmentSource
+  decidedInCampaignId String?          @map("decided_in_campaign_id")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  @@unique([sectionOfferingId, studentId])
+  @@index([studentId])
+  @@index([departmentId])
+  @@map("enrollment")
+}
+
+/// Weekly class slot (imported timetable or manual). TENANT.
+model ClassTimetableSlot {
+  id                   String              @id @default(cuid())
+  departmentId         String              @map("department_id")
+  department           Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  termId               String              @map("term_id")
+  term                 Term                @relation(fields: [termId], references: [id], onDelete: Cascade)
+  sectionOfferingId    String              @map("section_offering_id")
+  sectionOffering      SectionOffering     @relation(fields: [sectionOfferingId], references: [id], onDelete: Cascade)
+  teachingAssignmentId String?             @map("teaching_assignment_id")
+  teachingAssignment   TeachingAssignment? @relation(fields: [teachingAssignmentId], references: [id], onDelete: SetNull)
+  resourceId           String?             @map("resource_id")
+  resource             Resource?           @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+  weekday              Int
+  startTime            String              @map("start_time")
+  endTime              String              @map("end_time")
+  weekPattern          WeekPattern         @default(all) @map("week_pattern")
+  source               RowSource
+  importBatchId        String?             @map("import_batch_id")
+
+  @@index([termId, sectionOfferingId])
+  @@index([resourceId, weekday])
+  @@index([departmentId])
+  @@map("class_timetable_slot")
+}
+
+/// Rooms, labs, halls and offices (one table; labs carry computer counts and software). TENANT.
+model Resource {
+  id                  String         @id @default(cuid())
+  departmentId        String         @map("department_id")
+  department          Department     @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  code                String
+  name                String
+  kind                ResourceKind
+  building            String?
+  location            String?
+  capacity            Int?
+  responsiblePersonId String?        @map("responsible_person_id")
+  responsible         Person?        @relation("ResourceResponsible", fields: [responsiblePersonId], references: [id], onDelete: SetNull)
+  computerCount       Int?           @map("computer_count")
+  softwareList        String[]       @map("software_list")
+  attributesJson      Json           @default("{}") @map("attributes_json")
+  status              ResourceStatus @default(available)
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  timetableSlots ClassTimetableSlot[]
+
+  @@unique([departmentId, code])
+  @@map("resource")
+}

@@ -3,6 +3,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 import { truncateAll } from "./truncate";
 import { requireEnv } from "./urls";
+import { SEED_USERS } from "../../prisma/seed/users";
 
 // Playwright global setup: truncate the e2e database and re-run the full seed (SEED_DEMO=1).
 export async function resetE2eDatabase(): Promise<void> {
@@ -13,6 +14,9 @@ export async function resetE2eDatabase(): Promise<void> {
   });
   try {
     await truncateAll(db, schema);
+    // accounts created by earlier runs (invited representatives, admin-created users) must not
+    // survive, or "new user" flows find an existing account and skip the invite
+    await db.user.deleteMany({ where: { email: { notIn: SEED_USERS.map((u) => u.email) } } });
   } finally {
     await db.$disconnect();
   }

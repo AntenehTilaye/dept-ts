@@ -1,1 +1,242 @@
-// people models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// People & Org (design part 04 §4). Person is GLOBAL (a faculty directory: one record per human,
+// linked to departments only through DepartmentPerson); everything else here is TENANT.
+
+/// One record per human being, faculty-wide. GLOBAL (pg_trgm index on full_name by migration).
+model Person {
+  id               String       @id @default(cuid())
+  userId           String?      @unique @map("user_id")
+  user             User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  fullName         String       @map("full_name")
+  email            String?
+  phone            String?
+  type             PersonType
+  organizationName String?      @map("organization_name")
+  roleLabel        String?      @map("role_label")
+  status           ActiveStatus @default(active)
+  rowVersion       Int          @default(1) @map("row_version")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  departments          DepartmentPerson[]
+  staffProfiles        StaffProfile[]
+  profileItems         ProfileItem[]
+  students             Student[]
+  groupMemberships     GroupMembership[]
+  coordinatedOfferings CourseOffering[]     @relation("OfferingCoordinator")
+  teachingAssignments  TeachingAssignment[]
+  responsibleResources Resource[]           @relation("ResourceResponsible")
+
+  @@index([email])
+  @@index([fullName])
+  @@index([fullName(ops: raw("gin_trgm_ops"))], type: Gin, map: "person_full_name_trgm")
+  @@map("person")
+}
+
+/// The only tenant link of a person: which departments know them, and since when. TENANT.
+model DepartmentPerson {
+  departmentId String     @map("department_id")
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  personId     String     @map("person_id")
+  person       Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
+  joinedAt     DateTime   @default(now()) @map("joined_at")
+  leftAt       DateTime?  @map("left_at")
+
+  @@id([departmentId, personId])
+  @@index([personId])
+  @@map("department_person")
+}
+
+/// Department-specific staff attributes of a person (section 20). TENANT.
+model StaffProfile {
+  personId          String     @id @map("person_id")
+  person            Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
+  departmentId      String     @map("department_id")
+  department        Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  staffId           String     @map("staff_id")
+  academicRank      String?    @map("academic_rank")
+  employmentType    String?    @map("employment_type")
+  specialization    String?
+  academicInterests String[]   @map("academic_interests")
+  officeLocation    String?    @map("office_location")
+  officeHoursText   String?    @map("office_hours_text")
+  joinedAt          DateTime?  @map("joined_at")
+  rowVersion        Int        @default(1) @map("row_version")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  @@unique([departmentId, staffId])
+  @@map("staff_profile")
+}
+
+/// Qualifications, publications, research, training, responsibilities of a person. TENANT.
+model ProfileItem {
+  id                 String          @id @default(cuid())
+  departmentId       String          @map("department_id")
+  department         Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  personId           String          @map("person_id")
+  person             Person          @relation(fields: [personId], references: [id], onDelete: Cascade)
+  kind               ProfileItemKind
+  title              String
+  institutionOrVenue String?         @map("institution_or_venue")
+  dateFrom           DateTime?       @map("date_from") @db.Date
+  dateTo             DateTime?       @map("date_to") @db.Date
+  detailsJson        Json            @default("{}") @map("details_json")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  @@index([personId, kind])
+  @@index([departmentId])
+  @@map("profile_item")
+}
+
+/// Student attributes of a person in a department. TENANT.
+model Student {
+  personId      String        @id @map("person_id")
+  person        Person        @relation(fields: [personId], references: [id], onDelete: Cascade)
+  departmentId  String        @map("department_id")
+  department    Department    @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  studentNumber String        @map("student_number")
+  programId     String        @map("program_id")
+  program       Program       @relation(fields: [programId], references: [id], onDelete: Restrict)
+  admissionYear Int           @map("admission_year")
+  status        StudentStatus @default(active)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  sectionMemberships StudentSectionMembership[]
+  representations    SectionRepresentative[]
+  enrollments        Enrollment[]
+
+  @@unique([departmentId, studentNumber])
+  @@map("student")
+}
+
+/// Degree programme of a department. TENANT.
+model Program {
+  id            String     @id @default(cuid())
+  departmentId  String     @map("department_id")
+  department    Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  code          String
+  name          String
+  degreeLevel   String     @map("degree_level")
+  durationYears Int        @map("duration_years")
+  gradeScaleKey String     @default("default") @map("grade_scale_key")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  students Student[]
+  sections Section[]
+  courses  Course[]
+
+  @@unique([departmentId, code])
+  @@map("program")
+}
+
+/// Cohort section of a programme year (CS-Y2-A); its Group carries the membership audience. TENANT.
+model Section {
+  id             String       @id @default(cuid())
+  departmentId   String       @map("department_id")
+  department     Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  programId      String       @map("program_id")
+  program        Program      @relation(fields: [programId], references: [id], onDelete: Restrict)
+  academicYearId String       @map("academic_year_id")
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  yearLevel      Int          @map("year_level")
+  code           String
+  capacity       Int?
+  groupId        String       @unique @map("group_id")
+  group          Group        @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  memberships      StudentSectionMembership[]
+  representatives  SectionRepresentative[]
+  sectionOfferings SectionOffering[]
+
+  @@unique([programId, academicYearId, code])
+  @@index([departmentId])
+  @@map("section")
+}
+
+/// Time-varying membership of a student in a section (one per academic year). TENANT.
+model StudentSectionMembership {
+  id             String       @id @default(cuid())
+  departmentId   String       @map("department_id")
+  department     Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  studentId      String       @map("student_id")
+  student        Student      @relation(fields: [studentId], references: [personId], onDelete: Cascade)
+  sectionId      String       @map("section_id")
+  section        Section      @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  academicYearId String       @map("academic_year_id")
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  validFrom      DateTime     @map("valid_from")
+  validTo        DateTime?    @map("valid_to")
+  source         RowSource    @default(manual)
+
+  @@unique([studentId, academicYearId, validFrom])
+  @@index([sectionId, validTo])
+  @@index([departmentId])
+  @@map("student_section_membership")
+}
+
+/// Section representative (section 25); `section_rep_primary` partial unique index by migration. TENANT.
+model SectionRepresentative {
+  id             String       @id @default(cuid())
+  departmentId   String       @map("department_id")
+  department     Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  sectionId      String       @map("section_id")
+  section        Section      @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  studentId      String       @map("student_id")
+  student        Student      @relation(fields: [studentId], references: [personId], onDelete: Cascade)
+  academicYearId String       @map("academic_year_id")
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  validFrom      DateTime     @map("valid_from")
+  validTo        DateTime?    @map("valid_to")
+  isPrimary      Boolean      @default(true) @map("is_primary")
+
+  @@index([sectionId, academicYearId])
+  @@index([studentId])
+  @@index([departmentId])
+  @@map("section_representative")
+}
+
+/// Reusable membership container: committees, sections, meeting participants, panels, lab teams
+/// and ad-hoc audience snapshots. `contextType/contextId` point at the owning subject. TENANT.
+model Group {
+  id            String       @id @default(cuid())
+  departmentId  String       @map("department_id")
+  department    Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  kind          GroupKind
+  name          String
+  contextType   SubjectType? @map("context_type")
+  contextId     String?      @map("context_id")
+  status        ActiveStatus @default(active)
+  deactivatedAt DateTime?    @map("deactivated_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  members GroupMembership[]
+  section Section?
+
+  @@index([departmentId, kind, status])
+  @@index([contextType, contextId])
+  @@map("group")
+}
+
+/// Time-bounded membership of a person in a group with a role (chair, secretary, member, ...). TENANT.
+model GroupMembership {
+  id               String     @id @default(cuid())
+  departmentId     String     @map("department_id")
+  department       Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  groupId          String     @map("group_id")
+  group            Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  personId         String     @map("person_id")
+  person           Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
+  roleInGroup      GroupRole  @default(member) @map("role_in_group")
+  responsibilities String?
+  validFrom        DateTime   @default(now()) @map("valid_from")
+  validTo          DateTime?  @map("valid_to")
+
+  @@unique([groupId, personId, validFrom])
+  @@index([personId, validTo])
+  @@index([departmentId])
+  @@map("group_membership")
+}
