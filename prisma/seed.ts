@@ -9,6 +9,8 @@ import { seedUsers } from "./seed/users";
 import { seedCalendar } from "./seed/calendar";
 import { seedDemo } from "./seed/demo";
 import { seedWorkflows } from "./seed/workflows";
+import { seedReminderSchedules } from "./seed/reminder-schedules";
+import { seedTemplates } from "./seed/templates";
 
 // Runs via `prisma db seed` under DATABASE_URL_MIGRATE (dept_migrator, BYPASSRLS) for the
 // tables it writes directly; users go through better-auth, which uses the runtime client.
@@ -21,6 +23,8 @@ export async function runSeed(db: PrismaClient) {
   await seedUsers(db);
   await seedCalendar(db);
   await seedWorkflows(db);
+  await seedReminderSchedules(db);
+  await seedTemplates(db);
   if (process.env.SEED_DEMO === "1") await seedDemo(db);
 }
 

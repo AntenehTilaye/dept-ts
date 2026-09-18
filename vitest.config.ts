@@ -49,7 +49,7 @@ export default defineConfig({
           name: "integration",
           include: ["tests/integration/**/*.test.ts"],
           environment: "node",
-          globalSetup: ["tests/setup/global-db.ts"],
+          globalSetup: ["tests/setup/global-db.ts", "tests/setup/global-boss.ts"],
           setupFiles: ["tests/setup/db-each.ts"],
           fileParallelism: false,
           testTimeout: 30_000,

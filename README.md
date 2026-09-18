@@ -54,3 +54,7 @@ same commands there.
 ## Git workflow
 
 Work happens on branches (`feat/p<N>-<topic>`, `fix/<topic>`), one verified phase per branch, merged into `main` through a pull request. `.github/workflows/ci.yml` mirrors the verification sequence but is manual-only (`workflow_dispatch`) until CI is switched on.
+
+## Worker and jobs
+
+The `worker` service owns the `pgboss` schema, creates every queue of `src/platform/scheduler/queues.ts` at boot and registers the crons (`APP_TIMEZONE`, default `Africa/Addis_Ababa`). The web process only sends jobs, always on the caller's Prisma transaction (`enqueue(tx, ...)`) so a rolled-back action leaves no job behind; `/admin/jobs` shows the ledger, the outbox backlog and the worker heartbeat, `/admin/reminders` the schedules and a dry run, `/admin/templates` the versioned mustache templates.
