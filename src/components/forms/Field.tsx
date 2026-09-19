@@ -1,46 +1,52 @@
-import { useId, type ReactNode } from "react";
+import { useId, type ComponentProps, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
-/** Label + input pair used by every registry form. */
+// The asterisk is a CSS pseudo-element so that the label text (what tests and screen readers
+// match on) stays exactly the label.
+const REQUIRED = "after:ml-0.5 after:text-destructive after:content-['*']";
+
+/**
+ * Label + input pair used by every registry form. `hint` is microcopy under the field
+ * (format, example, consequence) linked through aria-describedby; `required` marks the
+ * label so the form never relies on colour alone.
+ */
 export function Field({
   name,
   label,
+  hint,
   type = "text",
   required,
-  defaultValue,
-  placeholder,
-  step,
-  min,
-  max,
+  className,
+  ...input
 }: {
   name: string;
   label: string;
+  hint?: ReactNode;
   type?: string;
   required?: boolean;
-  defaultValue?: string | number;
-  placeholder?: string;
-  step?: string;
-  min?: number;
-  max?: number;
-}) {
+} & Omit<ComponentProps<typeof Input>, "name" | "type" | "required" | "id">) {
   // useId keeps ids unique when the same field name appears in several forms on one page
   const id = `${useId()}-${name}`;
   return (
-    <div className="grid gap-1">
-      <Label htmlFor={id}>{label}</Label>
+    <div className={className ?? "grid gap-1.5"}>
+      <Label htmlFor={id} className={required ? REQUIRED : undefined}>
+        {label}
+      </Label>
       <Input
         id={id}
         name={name}
         type={type}
         required={required}
-        defaultValue={defaultValue}
-        placeholder={placeholder}
-        step={step}
-        min={min}
-        max={max}
+        aria-describedby={hint ? `${id}-hint` : undefined}
+        {...input}
       />
+      {hint ? (
+        <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -48,6 +54,7 @@ export function Field({
 export function SelectField({
   name,
   label,
+  hint,
   required,
   defaultValue,
   children,
@@ -55,6 +62,7 @@ export function SelectField({
 }: {
   name: string;
   label: string;
+  hint?: ReactNode;
   required?: boolean;
   defaultValue?: string;
   children: ReactNode;
@@ -62,12 +70,25 @@ export function SelectField({
 }) {
   const id = `${useId()}-${name}`;
   return (
-    <div className="grid gap-1">
-      <Label htmlFor={id}>{label}</Label>
-      <Select id={id} name={name} required={required} defaultValue={defaultValue ?? ""}>
+    <div className="grid gap-1.5">
+      <Label htmlFor={id} className={required ? REQUIRED : undefined}>
+        {label}
+      </Label>
+      <NativeSelect
+        id={id}
+        name={name}
+        required={required}
+        defaultValue={defaultValue ?? ""}
+        aria-describedby={hint ? `${id}-hint` : undefined}
+      >
         {emptyLabel !== undefined ? <option value="">{emptyLabel}</option> : null}
         {children}
-      </Select>
+      </NativeSelect>
+      {hint ? (
+        <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

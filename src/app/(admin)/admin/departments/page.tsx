@@ -1,5 +1,6 @@
 import { prismaRoot } from "@/lib/db/prisma";
 import { ActionForm } from "@/components/forms/ActionForm";
+import { PageHeader } from "@/components/patterns/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,56 +22,62 @@ export default async function DepartmentsPage() {
     orderBy: { code: "asc" },
   });
   return (
-    <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-      <Card>
-        <CardHeader>
-          <CardTitle>Departments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead>Members</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {departments.map((d) => (
-                <TableRow key={d.id}>
-                  <TableCell>{d.code}</TableCell>
-                  <TableCell>{d.name}</TableCell>
-                  <TableCell>/d/{d.organization.slug}</TableCell>
-                  <TableCell>{d.organization._count.members}</TableCell>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Departments"
+        description="Tenants of the faculty; each department has its own roles, calendar and data."
+      />
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Departments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Slug</TableHead>
+                  <TableHead>Members</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>New department</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ActionForm
-            action={createDepartmentForm}
-            submitLabel="Create department"
-            successMessage="Department created."
-            className="flex flex-col gap-3"
-          >
-            <div className="grid gap-2">
-              <Label htmlFor="code">Code</Label>
-              <Input id="code" name="code" placeholder="ME" required />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" name="name" placeholder="Mechanical Engineering" required />
-            </div>
-          </ActionForm>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {departments.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell>{d.code}</TableCell>
+                    <TableCell>{d.name}</TableCell>
+                    <TableCell>/d/{d.organization.slug}</TableCell>
+                    <TableCell>{d.organization._count.members}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>New department</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ActionForm
+              action={createDepartmentForm}
+              submitLabel="Create department"
+              successMessage="Department created."
+              className="flex flex-col gap-3"
+            >
+              <div className="grid gap-2">
+                <Label htmlFor="code">Code</Label>
+                <Input id="code" name="code" placeholder="ME" required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" name="name" placeholder="Mechanical Engineering" required />
+              </div>
+            </ActionForm>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

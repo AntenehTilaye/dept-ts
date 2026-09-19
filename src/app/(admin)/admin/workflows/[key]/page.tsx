@@ -3,6 +3,7 @@ import { adminPageContext } from "@/lib/auth/page";
 import { prismaRoot } from "@/lib/db/prisma";
 import { versionsOf } from "@/platform/workflow/registry";
 import { StateGraph } from "@/components/workflow/StateGraph";
+import { PageHeader } from "@/components/patterns/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -42,13 +43,16 @@ export default async function WorkflowPage(props: PageProps<"/admin/workflows/[k
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-mono text-2xl font-semibold tracking-tight">{selected.key}</h1>
-        <p className="text-sm text-muted-foreground">
-          {selected.definition.subjectType} · initial state {selected.definition.initialState} ·{" "}
-          {selected.departmentId ?? "faculty-wide"} · editing happens in the feature builder
-        </p>
-      </div>
+      <PageHeader
+        crumbs={[{ label: "Workflows", href: "/admin/workflows" }, { label: selected.key }]}
+        title={<span className="font-mono">{selected.key}</span>}
+        description={
+          <>
+            {selected.definition.subjectType} · initial state {selected.definition.initialState} ·{" "}
+            {selected.departmentId ?? "faculty-wide"} · editing happens in the feature builder
+          </>
+        }
+      />
       <div className="flex flex-wrap gap-2">
         {versions.map((v) => (
           <a key={v.id} href={`/admin/workflows/${encodeURIComponent(v.key)}?v=${v.version}`}>

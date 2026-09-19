@@ -9,13 +9,19 @@ interface NavSpec {
   label: string;
   group?: string;
   permission?: string;
+  icon?: string;
 }
 
 const NAV: NavSpec[] = [
   { path: "", label: "Overview" },
-  { path: "/inbox", label: "Inbox" },
-  { path: "/upcoming", label: "Upcoming" },
-  { path: "/settings/notifications", label: "Notification settings" },
+  { path: "/inbox", label: "Inbox", group: "Me" },
+  { path: "/upcoming", label: "Upcoming", group: "Me" },
+  {
+    path: "/settings/notifications",
+    label: "Notification settings",
+    group: "Me",
+    icon: "settings",
+  },
   { path: "/people", label: "People", group: "Registry", permission: "staff.view" },
   { path: "/sections", label: "Sections", group: "Registry", permission: "academic.manage" },
   { path: "/calendar", label: "Calendar", group: "Registry", permission: "academic.manage" },

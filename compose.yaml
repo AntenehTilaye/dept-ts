@@ -4,6 +4,8 @@ x-app-env: &app-env
   DATABASE_URL: postgresql://dept_app:dept_app@db:5432/dept
   DATABASE_URL_MIGRATE: postgresql://dept_migrator:dept_migrator@db:5432/dept
   BETTER_AUTH_URL: http://localhost:3000
+  # the dev server is also reached as http://web:3000 by the Playwright container
+  BETTER_AUTH_TRUSTED_ORIGINS: http://localhost:3000,http://web:3000
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-only-secret-please-change-0123456789}
   SMTP_URL: smtp://mailpit:1025
   MAIL_FROM: "DeptTS <noreply@deptts.local>"

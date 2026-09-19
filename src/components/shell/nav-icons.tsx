@@ -1,0 +1,47 @@
+import {
+  BellIcon,
+  BookOpenIcon,
+  BriefcaseIcon,
+  CalendarDaysIcon,
+  ClockIcon,
+  DoorOpenIcon,
+  FileTextIcon,
+  GraduationCapIcon,
+  HomeIcon,
+  LayersIcon,
+  ListChecksIcon,
+  MailIcon,
+  ScrollTextIcon,
+  SettingsIcon,
+  ShieldCheckIcon,
+  UsersIcon,
+  WorkflowIcon,
+  type LucideIcon,
+} from "lucide-react";
+
+/** Icon per navigation key; unknown keys fall back to a generic list icon. */
+export const NAV_ICONS: Record<string, LucideIcon> = {
+  overview: HomeIcon,
+  inbox: BellIcon,
+  upcoming: ClockIcon,
+  people: UsersIcon,
+  sections: GraduationCapIcon,
+  calendar: CalendarDaysIcon,
+  programs: LayersIcon,
+  courses: BookOpenIcon,
+  offerings: BriefcaseIcon,
+  resources: DoorOpenIcon,
+  settings: SettingsIcon,
+  users: UsersIcon,
+  departments: LayersIcon,
+  permissions: ShieldCheckIcon,
+  workflows: WorkflowIcon,
+  audit: ScrollTextIcon,
+  templates: FileTextIcon,
+  reminders: MailIcon,
+  jobs: ListChecksIcon,
+};
+
+export function iconFor(key: string): LucideIcon {
+  return NAV_ICONS[key] ?? ListChecksIcon;
+}

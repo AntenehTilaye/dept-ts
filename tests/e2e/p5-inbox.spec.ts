@@ -36,9 +36,13 @@ test.describe("inbox, templates and reminders", () => {
       .getByLabel("Email subject")
       .fill(`[{{department_code}}] ${stamp}: {{subject_label}}`);
     await admin.getByRole("button", { name: "Save new version" }).click();
-    await expect(admin.getByText("Version saved.")).toBeVisible();
+    const versionForm = admin.locator("form", {
+      has: admin.getByRole("button", { name: "Save new version" }),
+    });
+    await expect(versionForm.getByRole("alert")).toContainText("Version saved.");
     await admin.reload();
-    await expect(admin.getByText("v2 active")).toBeVisible();
+    // v2 on a fresh database; a retry after a failed attempt sees a later version
+    await expect(admin.getByText(/v[2-9] active/)).toBeVisible();
     await expect(admin.getByTestId("template-preview")).toContainText(stamp);
 
     // the reminders page shows the seeded schedules and the dry run for 14 days
@@ -50,8 +54,11 @@ test.describe("inbox, templates and reminders", () => {
 
     // a test reminder fired from the admin page reaches the head's mailbox with the new wording
     await admin.goto("/admin/reminders?days=14&department=dep_cs");
-    await admin.getByRole("button", { name: "Fire a test reminder now" }).click();
-    await expect(admin.getByText("Test reminder scheduled", { exact: false })).toBeVisible();
+    const fire = admin.locator("form", {
+      has: admin.getByRole("button", { name: "Fire a test reminder now" }),
+    });
+    await fire.getByRole("button", { name: "Fire a test reminder now" }).click();
+    await expect(fire.getByRole("alert")).toContainText("Test reminder scheduled");
     const mail = await waitForMail({
       to: "dh.cs@deptts.local",
       subjectIncludes: stamp,

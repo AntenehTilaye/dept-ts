@@ -23,14 +23,17 @@ export default async function DepartmentLayout(props: LayoutProps<"/d/[dept]">) 
   const inbox = ctx.personId ? await unreadCount(dbOf(ctx), ctx.personId) : null;
   return (
     <AppShell
-      deptSlug={dept}
-      departmentName={ctx.departmentName}
+      rootHref={`/d/${dept}`}
+      title="DeptTS"
+      subtitle={ctx.departmentName}
+      nav={await navFor(ctx)}
       userName={ctx.user.name}
       userEmail={ctx.user.email}
       isAdmin={ctx.isAdmin}
-      nav={await navFor(ctx)}
-      inbox={inbox}
       departments={departments}
+      currentSlug={dept}
+      inbox={inbox}
+      inboxHref={`/d/${dept}/inbox`}
     >
       {props.children}
     </AppShell>

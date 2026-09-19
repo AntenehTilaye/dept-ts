@@ -55,6 +55,10 @@ same commands there.
 
 Work happens on branches (`feat/p<N>-<topic>`, `fix/<topic>`), one verified phase per branch, merged into `main` through a pull request. `.github/workflows/ci.yml` mirrors the verification sequence but is manual-only (`workflow_dispatch`) until CI is switched on.
 
+## User interface
+
+Screens are built from official [shadcn/ui](https://ui.shadcn.com) components (`npx shadcn@latest add <name>` inside the `web` container; `components.json` holds the style) and the pattern layer under `src/components/patterns` (`PageHeader`, `DataTable`, `EmptyState`, `StatCard`, `FormSection`, `ListLayout`, `SegmentedLinks`, `PageSkeleton`). The researched standard every page follows is `docs/design/08-ui-standard.md`. The Playwright container can also drive the dev server (`docker compose up -d web` then `docker compose -f compose.yaml -f compose.e2e.yaml --profile e2e run --rm --no-deps e2e npx playwright test <spec>`), which is where hydration problems surface with full React messages.
+
 ## Worker and jobs
 
 The `worker` service owns the `pgboss` schema, creates every queue of `src/platform/scheduler/queues.ts` at boot and registers the crons (`APP_TIMEZONE`, default `Africa/Addis_Ababa`). The web process only sends jobs, always on the caller's Prisma transaction (`enqueue(tx, ...)`) so a rolled-back action leaves no job behind; `/admin/jobs` shows the ledger, the outbox backlog and the worker heartbeat, `/admin/reminders` the schedules and a dry run, `/admin/templates` the versioned mustache templates.

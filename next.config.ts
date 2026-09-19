@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   typedRoutes: true,
   serverExternalPackages: ["@prisma/client", "pg", "pg-boss", "nodemailer"],
   images: { unoptimized: true },
+  // the dev server is also reached as http://web:3000 from other compose containers
+  allowedDevOrigins: ["web", "localhost", "127.0.0.1"],
 };
 
 export default nextConfig;

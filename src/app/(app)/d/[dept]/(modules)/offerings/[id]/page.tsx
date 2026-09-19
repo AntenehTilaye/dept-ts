@@ -4,6 +4,7 @@ import { getOffering } from "@/platform/academic/offerings";
 import { listStaff } from "@/platform/people/staff";
 import { ActionForm } from "@/components/forms/ActionForm";
 import { SelectField } from "@/components/forms/Field";
+import { PageHeader } from "@/components/patterns/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -33,16 +34,24 @@ export default async function OfferingPage(props: PageProps<"/d/[dept]/offerings
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          <span className="font-mono">{offering.course.code}</span> {offering.course.title}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {offering.term.academicYear.code} · {offering.term.name} · coordinator{" "}
-          {offering.coordinator?.fullName ?? "-"}
-          {offering.schemeStructureLockedAt ? " · scheme locked" : ""}
-        </p>
-      </div>
+      <PageHeader
+        crumbs={[
+          { label: "Offerings", href: `/d/${dept}/offerings` },
+          { label: offering.course.code },
+        ]}
+        title={
+          <>
+            <span className="font-mono">{offering.course.code}</span> {offering.course.title}
+          </>
+        }
+        description={
+          <>
+            {offering.term.academicYear.code} · {offering.term.name} · coordinator{" "}
+            {offering.coordinator?.fullName ?? "—"}
+            {offering.schemeStructureLockedAt ? " · scheme locked" : ""}
+          </>
+        }
+      />
       <div className="grid gap-4 md:grid-cols-2">
         {offering.sectionOfferings.map((so) => (
           <Card key={so.id} data-testid={`section-offering-${so.sectionCode}`}>

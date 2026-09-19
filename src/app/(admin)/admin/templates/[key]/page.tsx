@@ -10,6 +10,7 @@ import {
 import type { DeclaredVariable } from "@/platform/template/mustache-safe";
 import { ActionForm } from "@/components/forms/ActionForm";
 import { Field } from "@/components/forms/Field";
+import { PageHeader } from "@/components/patterns/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { activateForm, newVersionForm } from "../actions";
@@ -41,12 +42,15 @@ export default async function TemplatePage(props: PageProps<"/admin/templates/[k
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-mono text-2xl font-semibold tracking-tight">{t.key}</h1>
-        <p className="text-sm text-muted-foreground">
-          {t.kind} · {t.departmentId ?? "faculty"} · active version {t.activeVersion ?? "none"}
-        </p>
-      </div>
+      <PageHeader
+        crumbs={[{ label: "Templates", href: "/admin/templates" }, { label: t.key }]}
+        title={<span className="font-mono">{t.key}</span>}
+        description={
+          <>
+            {t.kind} · {t.departmentId ?? "faculty"} · active version {t.activeVersion ?? "none"}
+          </>
+        }
+      />
       <div className="flex flex-wrap gap-2">
         {t.versions.map((v) => (
           <a key={v.id} href={`/admin/templates/${t.id}?v=${v.version}`}>

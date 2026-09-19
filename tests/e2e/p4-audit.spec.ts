@@ -12,7 +12,10 @@ test.describe("audit and workflows", () => {
     await edit.getByLabel("Full name").fill(`Instructor Two ${stamp}`);
     await edit.getByRole("button", { name: "Save person" }).click();
     await expect(edit.getByRole("alert")).toContainText("Person saved.");
-    await expect(dh.getByRole("heading", { name: `Instructor Two ${stamp}` })).toBeVisible();
+    // the action response carries the refreshed tree; under a parallel run it can take a while
+    await expect(dh.getByRole("heading", { name: `Instructor Two ${stamp}` })).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(dh.getByTestId("audit-panel")).toContainText(`Instructor Two ${stamp}`);
 
     const admin = await pageAs("admin");

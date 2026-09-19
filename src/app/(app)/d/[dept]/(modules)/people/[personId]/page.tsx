@@ -9,6 +9,7 @@ import { ActionForm } from "@/components/forms/ActionForm";
 import { AuditPanel } from "@/components/AuditPanel";
 import { history } from "@/platform/audit/history";
 import { Field, SelectField, fmtDate } from "@/components/forms/Field";
+import { PageHeader } from "@/components/patterns/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { addProfileItemForm, renamePersonForm } from "../actions";
@@ -62,13 +63,16 @@ export default async function PersonPage(props: PageProps<"/d/[dept]/people/[per
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{person.fullName}</h1>
-        <p className="text-sm text-muted-foreground">
-          {person.email ?? "no email"} · {person.type} · {person.status}
-          {person.userId ? " · has login" : " · no login"}
-        </p>
-      </div>
+      <PageHeader
+        crumbs={[{ label: "People", href: `/d/${dept}/people` }, { label: person.fullName }]}
+        title={person.fullName}
+        description={
+          <>
+            {person.email ?? "no email"} · {person.type} · {person.status}
+            {person.userId ? " · has login" : " · no login"}
+          </>
+        }
+      />
       <div className="grid gap-4 md:grid-cols-2">
         {staff ? (
           <Card data-testid="staff-profile">

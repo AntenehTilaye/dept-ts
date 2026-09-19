@@ -3,41 +3,42 @@ import { Sidebar, type NavItem } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
 export interface ShellProps {
-  deptSlug: string;
-  departmentName: string;
+  rootHref: string;
+  title: string;
+  subtitle: string;
+  nav: NavItem[];
   userName: string;
   userEmail: string;
   isAdmin: boolean;
-  nav: NavItem[];
-  departments: Array<{ slug: string; code: string; name: string }>;
+  departments?: Array<{ slug: string; code: string; name: string }>;
+  currentSlug?: string;
   inbox?: { unread: number; pendingAck: number } | null;
+  inboxHref?: string;
+  topbarExtra?: ReactNode;
   children: ReactNode;
 }
 
-export function AppShell({
-  children,
-  nav,
-  deptSlug,
-  departmentName,
-  userName,
-  userEmail,
-  isAdmin,
-  departments,
-  inbox,
-}: ShellProps) {
+/** The one application shell: sidebar + header, inherited by the department and admin areas. */
+export function AppShell({ children, topbarExtra, ...props }: ShellProps) {
   return (
     <div className="flex min-h-screen">
-      <Sidebar deptSlug={deptSlug} departmentName={departmentName} items={nav} />
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:shadow"
+      >
+        Skip to content
+      </a>
+      <Sidebar
+        rootHref={props.rootHref}
+        title={props.title}
+        subtitle={props.subtitle}
+        items={props.nav}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar
-          deptSlug={deptSlug}
-          userName={userName}
-          userEmail={userEmail}
-          isAdmin={isAdmin}
-          departments={departments}
-          inbox={inbox}
-        />
-        <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
+        <Topbar {...props}>{topbarExtra}</Topbar>
+        <main id="main" tabIndex={-1} className="flex-1 px-4 py-6 outline-none md:px-8">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">{children}</div>
+        </main>
       </div>
     </div>
   );

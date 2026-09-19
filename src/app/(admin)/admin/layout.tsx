@@ -1,61 +1,35 @@
-import Link from "next/link";
+import type { Route } from "next";
 import type { ReactNode } from "react";
 import { adminPageContext } from "@/lib/auth/page";
-import { signOutAction } from "@/app/(auth)/select-department/actions";
-import { Button } from "@/components/ui/button";
+import { AppShell } from "@/components/shell/AppShell";
+import type { NavItem } from "@/components/shell/Sidebar";
 
-const NAV = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/departments", label: "Departments" },
-  { href: "/admin/permissions", label: "Permissions" },
-  { href: "/admin/settings", label: "Settings" },
-  { href: "/admin/workflows", label: "Workflows" },
-  { href: "/admin/audit", label: "Audit" },
-  { href: "/admin/templates", label: "Templates" },
-  { href: "/admin/reminders", label: "Reminders" },
-  { href: "/admin/jobs", label: "Jobs" },
-] as const;
+const NAV: NavItem[] = [
+  { href: "/admin" as Route, label: "Overview", icon: "overview" },
+  { href: "/admin/users" as Route, label: "Users", group: "Access" },
+  { href: "/admin/departments" as Route, label: "Departments", group: "Access" },
+  { href: "/admin/permissions" as Route, label: "Permissions", group: "Access" },
+  { href: "/admin/settings" as Route, label: "Settings", group: "Configuration" },
+  { href: "/admin/templates" as Route, label: "Templates", group: "Configuration" },
+  { href: "/admin/reminders" as Route, label: "Reminders", group: "Configuration" },
+  { href: "/admin/workflows" as Route, label: "Workflows", group: "Operations" },
+  { href: "/admin/jobs" as Route, label: "Jobs", group: "Operations" },
+  { href: "/admin/audit" as Route, label: "Audit", group: "Operations" },
+];
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const ctx = await adminPageContext();
   return (
-    <div className="flex min-h-screen">
-      <aside className="hidden w-60 shrink-0 flex-col border-r bg-card md:flex">
-        <div className="px-4 py-4">
-          <Link href="/admin" className="text-lg font-semibold tracking-tight">
-            DeptTS
-          </Link>
-          <p className="text-xs text-muted-foreground">Faculty administration</p>
-        </div>
-        <nav className="flex flex-col px-2">
-          {NAV.map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              className="rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-            >
-              {n.label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center justify-between border-b bg-card px-4 md:px-8">
-          <Link href="/select-department" className="text-sm underline">
-            Back to departments
-          </Link>
-          <div className="flex items-center gap-3">
-            <span className="text-sm">{ctx.user.email}</span>
-            <form action={signOutAction}>
-              <Button variant="ghost" size="sm" type="submit">
-                Sign out
-              </Button>
-            </form>
-          </div>
-        </header>
-        <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
-      </div>
-    </div>
+    <AppShell
+      rootHref="/admin"
+      title="DeptTS"
+      subtitle="Faculty administration"
+      nav={NAV}
+      userName={ctx.user.name}
+      userEmail={ctx.user.email}
+      isAdmin
+    >
+      {children}
+    </AppShell>
   );
 }

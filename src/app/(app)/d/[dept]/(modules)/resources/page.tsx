@@ -3,16 +3,11 @@ import { listResources } from "@/platform/academic/resources";
 import { listStaff } from "@/platform/people/staff";
 import { ActionForm } from "@/components/forms/ActionForm";
 import { Field, SelectField } from "@/components/forms/Field";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { FormSection } from "@/components/patterns/FormSection";
+import { ListLayout } from "@/components/patterns/ListLayout";
+import { PageHeader } from "@/components/patterns/PageHeader";
+import { ResourcesTable } from "@/components/tables/SimpleTables";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { upsertResourceForm } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -37,135 +32,120 @@ export default async function ResourcesPage(props: PageProps<"/d/[dept]/resource
   ]);
   const editing =
     typeof params.edit === "string" ? resources.find((r) => r.id === params.edit) : undefined;
+  const rows = resources.map((r) => ({
+    id: r.id,
+    code: r.code,
+    name: r.name,
+    kind: r.kind,
+    capacity: r.capacity?.toString() ?? "—",
+    responsible: r.responsible?.fullName ?? "—",
+    status: r.status,
+    detail:
+      r.kind === "computer_lab" ? `${r.computerCount ?? 0} PCs · ${r.softwareList.join(", ")}` : "",
+    editHref: `/d/${dept}/resources?edit=${r.id}`,
+  }));
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-      <Card>
-        <CardHeader>
-          <CardTitle>Rooms, labs and halls</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Kind</TableHead>
-                <TableHead>Capacity</TableHead>
-                <TableHead>Responsible</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {resources.map((r) => (
-                <TableRow key={r.id} data-testid={`resource-${r.code}`}>
-                  <TableCell className="font-mono">{r.code}</TableCell>
-                  <TableCell>
-                    {r.name}
-                    {r.kind === "computer_lab" ? (
-                      <span className="text-xs text-muted-foreground">
-                        {" "}
-                        · {r.computerCount ?? 0} PCs · {r.softwareList.join(", ")}
-                      </span>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>{r.kind}</TableCell>
-                  <TableCell>{r.capacity ?? "-"}</TableCell>
-                  <TableCell>{r.responsible?.fullName ?? "-"}</TableCell>
-                  <TableCell>
-                    <Badge variant={r.status === "available" ? "default" : "secondary"}>
-                      {r.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <a className="text-xs underline" href={`/d/${dept}/resources?edit=${r.id}`}>
-                      edit
-                    </a>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>{editing ? `Edit ${editing.code}` : "Add a resource"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ActionForm
-            action={upsertResourceForm}
-            submitLabel={editing ? "Save" : "Add resource"}
-            successMessage="Resource saved."
-            className="grid gap-3"
-            resetOnSuccess={!editing}
-          >
-            <input type="hidden" name="dept" value={dept} />
-            {editing ? <input type="hidden" name="id" value={editing.id} /> : null}
-            <Field
-              name="code"
-              label="Code"
-              required
-              defaultValue={editing?.code}
-              placeholder="R102"
-            />
-            <Field name="name" label="Name" required defaultValue={editing?.name} />
-            <SelectField
-              name="kind"
-              label="Kind"
-              required
-              defaultValue={editing?.kind ?? "classroom"}
-            >
-              {KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </SelectField>
-            <Field name="building" label="Building" defaultValue={editing?.building ?? ""} />
-            <Field name="location" label="Location" defaultValue={editing?.location ?? ""} />
-            <Field
-              name="capacity"
-              label="Capacity"
-              type="number"
-              defaultValue={editing?.capacity ?? ""}
-              min={1}
-            />
-            <Field
-              name="computerCount"
-              label="Computers"
-              type="number"
-              defaultValue={editing?.computerCount ?? ""}
-              min={0}
-            />
-            <Field
-              name="software"
-              label="Software (comma separated)"
-              defaultValue={editing?.softwareList.join(", ") ?? ""}
-            />
-            <SelectField
-              name="responsiblePersonId"
-              label="Responsible"
-              defaultValue={editing?.responsiblePersonId ?? ""}
-              emptyLabel="(none)"
-            >
-              {staff.map((s) => (
-                <option key={s.personId} value={s.personId}>
-                  {s.person.fullName}
-                </option>
-              ))}
-            </SelectField>
-            {editing ? (
-              <SelectField name="status" label="Status" defaultValue={editing.status}>
-                <option value="available">available</option>
-                <option value="maintenance">maintenance</option>
-                <option value="retired">retired</option>
-              </SelectField>
-            ) : null}
-          </ActionForm>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Resources"
+        description="Rooms, labs and halls that timetables, exams and meetings are placed in."
+      />
+      <ListLayout
+        aside={
+          <Card>
+            <CardHeader>
+              <CardTitle>{editing ? `Edit ${editing.code}` : "Add a resource"}</CardTitle>
+              {editing ? (
+                <CardDescription>
+                  <a className="underline" href={`/d/${dept}/resources`}>
+                    Cancel editing
+                  </a>
+                </CardDescription>
+              ) : null}
+            </CardHeader>
+            <CardContent>
+              <ActionForm
+                action={upsertResourceForm}
+                submitLabel={editing ? "Save" : "Add resource"}
+                successMessage="Resource saved."
+                className="grid gap-4"
+                resetOnSuccess={!editing}
+              >
+                <input type="hidden" name="dept" value={dept} />
+                {editing ? <input type="hidden" name="id" value={editing.id} /> : null}
+                <Field
+                  name="code"
+                  label="Code"
+                  required
+                  defaultValue={editing?.code}
+                  placeholder="R102"
+                />
+                <Field name="name" label="Name" required defaultValue={editing?.name} />
+                <SelectField
+                  name="kind"
+                  label="Kind"
+                  required
+                  defaultValue={editing?.kind ?? "classroom"}
+                >
+                  {KINDS.map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
+                  ))}
+                </SelectField>
+                <FormSection title="Where and how big">
+                  <Field name="building" label="Building" defaultValue={editing?.building ?? ""} />
+                  <Field name="location" label="Location" defaultValue={editing?.location ?? ""} />
+                  <Field
+                    name="capacity"
+                    label="Capacity"
+                    type="number"
+                    defaultValue={editing?.capacity ?? ""}
+                    min={1}
+                  />
+                </FormSection>
+                <FormSection title="Computer lab" description="Only for computer labs.">
+                  <Field
+                    name="computerCount"
+                    label="Computers"
+                    type="number"
+                    defaultValue={editing?.computerCount ?? ""}
+                    min={0}
+                  />
+                  <Field
+                    name="software"
+                    label="Software (comma separated)"
+                    defaultValue={editing?.softwareList.join(", ") ?? ""}
+                    placeholder="MATLAB, Python, VS Code"
+                  />
+                </FormSection>
+                <SelectField
+                  name="responsiblePersonId"
+                  label="Responsible"
+                  defaultValue={editing?.responsiblePersonId ?? ""}
+                  emptyLabel="(none)"
+                >
+                  {staff.map((s) => (
+                    <option key={s.personId} value={s.personId}>
+                      {s.person.fullName}
+                    </option>
+                  ))}
+                </SelectField>
+                {editing ? (
+                  <SelectField name="status" label="Status" defaultValue={editing.status}>
+                    <option value="available">available</option>
+                    <option value="maintenance">maintenance</option>
+                    <option value="retired">retired</option>
+                  </SelectField>
+                ) : null}
+              </ActionForm>
+            </CardContent>
+          </Card>
+        }
+      >
+        <ResourcesTable rows={rows} />
+      </ListLayout>
     </div>
   );
 }
