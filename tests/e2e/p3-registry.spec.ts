@@ -138,9 +138,13 @@ test.describe("registry", () => {
     await expect(ee.getByText("No one matches.")).toBeVisible();
     await expect(ee.getByTestId("person-instructor1.cs@deptts.local")).toHaveCount(0);
     const instructor = await pageAs("instructor1.cs");
-    expect((await instructor.goto("/d/cs/calendar"))?.status()).toBe(404);
+    // pages stream behind a loading boundary, so a page-level notFound() renders the 404 page
+    // with a 200 status (a non-member is still refused with a real 404 by the layout)
+    await instructor.goto("/d/cs/calendar");
+    await expect(instructor.getByRole("heading", { name: "Page not found" })).toBeVisible();
     await instructor.goto("/d/cs");
-    await expect(instructor.getByRole("link", { name: "People" })).toBeVisible();
-    await expect(instructor.getByRole("link", { name: "Calendar" })).toHaveCount(0);
+    const nav = instructor.getByRole("navigation", { name: "Main" });
+    await expect(nav.getByRole("link", { name: "People" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Calendar" })).toHaveCount(0);
   });
 });

@@ -4,7 +4,9 @@ import { representativesOf } from "@/platform/people/representatives";
 import { studentsInSection } from "@/platform/people/students";
 import { ActionForm } from "@/components/forms/ActionForm";
 import { Field, SelectField } from "@/components/forms/Field";
+import { PageHeader } from "@/components/patterns/PageHeader";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   addStudentToSectionForm,
@@ -55,21 +57,24 @@ export default async function SectionsPage(props: PageProps<"/d/[dept]/sections"
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-end justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Sections</h1>
-        <form method="get" className="flex items-end gap-2">
-          <SelectField name="year" label="Academic year" defaultValue={yearId}>
-            {years.map((y) => (
-              <option key={y.id} value={y.id}>
-                {y.code} ({y.status})
-              </option>
-            ))}
-          </SelectField>
-          <button type="submit" className="h-9 rounded-md border px-3 text-sm">
-            Show
-          </button>
-        </form>
-      </div>
+      <PageHeader
+        title="Sections"
+        description="Cohorts of a program and year level; students and representatives are managed per academic year."
+        actions={
+          <form method="get" className="flex items-end gap-2">
+            <SelectField name="year" label="Academic year" defaultValue={yearId}>
+              {years.map((y) => (
+                <option key={y.id} value={y.id}>
+                  {y.code} ({y.status})
+                </option>
+              ))}
+            </SelectField>
+            <Button type="submit" variant="outline">
+              Show
+            </Button>
+          </form>
+        }
+      />
       <div className="grid gap-4 md:grid-cols-2">
         {detail.map(({ section, students, reps }) => (
           <Card key={section.id} data-testid={`section-${section.code}`}>

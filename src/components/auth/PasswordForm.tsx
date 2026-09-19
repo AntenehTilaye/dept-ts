@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
+import { useHydrated } from "@/lib/use-hydrated";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ export function NewPasswordForm({ token, mode }: { token: string; mode: "set" | 
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const hydrated = useHydrated();
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,7 +36,7 @@ export function NewPasswordForm({ token, mode }: { token: string; mode: "set" | 
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+    <form onSubmit={onSubmit} method="post" className="flex flex-col gap-4" noValidate>
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <div className="grid gap-2">
         <Label htmlFor="password">{mode === "set" ? "Choose a password" : "New password"}</Label>
@@ -59,7 +61,7 @@ export function NewPasswordForm({ token, mode }: { token: string; mode: "set" | 
           required
         />
       </div>
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending || !hydrated}>
         {pending ? "Saving…" : mode === "set" ? "Set password" : "Reset password"}
       </Button>
     </form>
@@ -70,6 +72,7 @@ export function NewPasswordForm({ token, mode }: { token: string; mode: "set" | 
 export function RequestResetForm() {
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
+  const hydrated = useHydrated();
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -88,12 +91,12 @@ export function RequestResetForm() {
       <Alert variant="success">If that address has an account, a reset link is on its way.</Alert>
     );
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+    <form onSubmit={onSubmit} method="post" className="flex flex-col gap-4" noValidate>
       <div className="grid gap-2">
         <Label htmlFor="email">Email</Label>
         <Input id="email" name="email" type="email" autoComplete="username" required />
       </div>
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending || !hydrated}>
         {pending ? "Sending…" : "Send reset link"}
       </Button>
     </form>

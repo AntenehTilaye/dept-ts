@@ -3,6 +3,7 @@ import { listYears, previewPeriodImpact } from "@/platform/academic/calendar";
 import { periodKindSchema } from "@/platform/academic/schemas";
 import { ActionForm } from "@/components/forms/ActionForm";
 import { Field, SelectField, fmtDate, fmtDateTime } from "@/components/forms/Field";
+import { PageHeader } from "@/components/patterns/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -33,7 +34,10 @@ export default async function CalendarPage(props: PageProps<"/d/[dept]/calendar"
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Academic calendar</h1>
+      <PageHeader
+        title="Academic calendar"
+        description="Years, terms and the periods (add/drop, exams, ...) that campaigns and reminders anchor to."
+      />
       {years.map((y) => (
         <Card key={y.id} data-testid={`year-${y.code}`}>
           <CardHeader>

@@ -4,15 +4,11 @@ import { listCourses } from "@/platform/academic/courses";
 import { listStaff } from "@/platform/people/staff";
 import { ActionForm } from "@/components/forms/ActionForm";
 import { SelectField } from "@/components/forms/Field";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ListLayout } from "@/components/patterns/ListLayout";
+import { PageHeader } from "@/components/patterns/PageHeader";
+import { OfferingsTable } from "@/components/tables/SimpleTables";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createOfferingForm } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -36,86 +32,84 @@ export default async function OfferingsPage(props: PageProps<"/d/[dept]/offering
     listCourses(db, ctx.departmentId),
     listStaff(db, ctx.departmentId),
   ]);
+  const rows = offerings.map((o) => ({
+    id: o.id,
+    code: o.course.code,
+    title: o.course.title,
+    coordinator: o.coordinator?.fullName ?? "—",
+    sections: o._count.sectionOfferings,
+    href: `/d/${dept}/offerings/${o.id}`,
+  }));
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-      <Card>
-        <CardHeader>
-          <CardTitle>Course offerings</CardTitle>
-          <form method="get" className="flex items-end gap-2">
-            <SelectField name="term" label="Term" defaultValue={termId}>
-              {terms.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.academicYear.code} · {t.name} ({t.status})
-                </option>
-              ))}
-            </SelectField>
-            <button type="submit" className="h-9 rounded-md border px-3 text-sm">
-              Show
-            </button>
-          </form>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Course</TableHead>
-                <TableHead>Coordinator</TableHead>
-                <TableHead>Sections</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {offerings.map((o) => (
-                <TableRow key={o.id} data-testid={`offering-${o.course.code}`}>
-                  <TableCell>
-                    <a className="underline" href={`/d/${dept}/offerings/${o.id}`}>
-                      <span className="font-mono">{o.course.code}</span> {o.course.title}
-                    </a>
-                  </TableCell>
-                  <TableCell>{o.coordinator?.fullName ?? "-"}</TableCell>
-                  <TableCell>{o._count.sectionOfferings}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Offer a course</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ActionForm
-            action={createOfferingForm}
-            submitLabel="Create offering"
-            successMessage="Offering created."
-            className="grid gap-3"
-          >
-            <input type="hidden" name="dept" value={dept} />
-            <SelectField name="termId" label="Term" required defaultValue={termId}>
-              {terms.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.academicYear.code} · {t.name}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField name="courseId" label="Course" required>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} {c.title}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField name="coordinatorPersonId" label="Coordinator" emptyLabel="(none)">
-              {staff.map((s) => (
-                <option key={s.personId} value={s.personId}>
-                  {s.person.fullName}
-                </option>
-              ))}
-            </SelectField>
-          </ActionForm>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Course offerings"
+        description="Which courses run in a term, who coordinates them and which sections take them."
+      />
+      <ListLayout
+        aside={
+          <Card>
+            <CardHeader>
+              <CardTitle>Offer a course</CardTitle>
+              <CardDescription>
+                Sections and instructors are added on the offering page.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ActionForm
+                action={createOfferingForm}
+                submitLabel="Create offering"
+                successMessage="Offering created."
+                className="grid gap-4"
+              >
+                <input type="hidden" name="dept" value={dept} />
+                <SelectField name="termId" label="Term" required defaultValue={termId}>
+                  {terms.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.academicYear.code} · {t.name}
+                    </option>
+                  ))}
+                </SelectField>
+                <SelectField name="courseId" label="Course" required>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.code} {c.title}
+                    </option>
+                  ))}
+                </SelectField>
+                <SelectField name="coordinatorPersonId" label="Coordinator" emptyLabel="(none)">
+                  {staff.map((s) => (
+                    <option key={s.personId} value={s.personId}>
+                      {s.person.fullName}
+                    </option>
+                  ))}
+                </SelectField>
+              </ActionForm>
+            </CardContent>
+          </Card>
+        }
+      >
+        <Card>
+          <CardHeader>
+            <form method="get" className="flex flex-wrap items-end gap-2">
+              <SelectField name="term" label="Term" defaultValue={termId}>
+                {terms.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.academicYear.code} · {t.name} ({t.status})
+                  </option>
+                ))}
+              </SelectField>
+              <Button type="submit" variant="outline">
+                Show
+              </Button>
+            </form>
+          </CardHeader>
+          <CardContent>
+            <OfferingsTable rows={rows} />
+          </CardContent>
+        </Card>
+      </ListLayout>
     </div>
   );
 }

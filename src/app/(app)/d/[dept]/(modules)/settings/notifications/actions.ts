@@ -7,17 +7,18 @@ import { formToObject } from "@/lib/actions/form";
 import { prismaRoot } from "@/lib/db/prisma";
 import { NotificationCategory } from "@/generated/prisma/enums";
 
-/** Saves the user's email switches: one row per category that is turned off (default on). */
+/**
+ * Saves the user's email switches. The form submits the categories that are ON; a row is
+ * stored per category that is turned off (email is on by default).
+ */
 export const savePreferencesAction = safeAction(
-  z.object({ emailOff: z.array(z.string()).default([]) }),
+  z.object({ emailOn: z.array(z.string()).default([]) }),
   async ({ input, ctx }) => {
     const categories = Object.values(NotificationCategory);
     await prismaRoot.channelPreference.deleteMany({
       where: { userId: ctx.user.id, channel: "email" },
     });
-    const off = input.emailOff.filter((c): c is NotificationCategory =>
-      (categories as string[]).includes(c),
-    );
+    const off = categories.filter((c) => !input.emailOn.includes(c));
     if (off.length) {
       await prismaRoot.channelPreference.createMany({
         data: off.map((category) => ({
@@ -34,5 +35,5 @@ export const savePreferencesAction = safeAction(
 );
 
 export async function savePreferencesForm(fd: FormData) {
-  return savePreferencesAction(formToObject(fd, { arrays: ["emailOff"] }));
+  return savePreferencesAction(formToObject(fd, { arrays: ["emailOn"] }));
 }
