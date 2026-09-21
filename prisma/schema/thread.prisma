@@ -1,1 +1,49 @@
-// thread models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Threads and comments (design part 04 §15): the one discussion service for task comments,
+// revision notes, case notes and two-way conversations. Open/closed is an attribute flag.
+
+/// A discussion on a subject (one per subject and kind) or a free-standing conversation. TENANT.
+model Thread {
+  id                 String       @id @default(cuid())
+  departmentId       String       @map("department_id")
+  department         Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  subjectType        SubjectType? @map("subject_type")
+  subjectId          String?      @map("subject_id")
+  kind               ThreadKind
+  title              String?
+  participantGroupId String?      @map("participant_group_id")
+  participantGroup   Group?       @relation(fields: [participantGroupId], references: [id], onDelete: SetNull)
+  sectionId          String?      @map("section_id")
+  section            Section?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  openedBy           String       @map("opened_by")
+  status             ThreadStatus @default(open)
+  escalatedToTaskId  String?      @map("escalated_to_task_id")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  comments Comment[]
+
+  @@unique([subjectType, subjectId, kind])
+  @@index([sectionId, status])
+  @@index([departmentId, status, updatedAt])
+  @@map("thread")
+}
+
+/// One post; `mentions` holds the person ids referenced with @. TENANT.
+model Comment {
+  id             String     @id @default(cuid())
+  departmentId   String     @map("department_id")
+  department     Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  threadId       String     @map("thread_id")
+  thread         Thread     @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorPersonId String     @map("author_person_id")
+  author         Person     @relation(fields: [authorPersonId], references: [id], onDelete: Restrict)
+  body           String
+  visibility     Visibility @default(all)
+  mentions       String[]   @default([])
+  createdAt      DateTime   @default(now()) @map("created_at")
+  editedAt       DateTime?  @map("edited_at")
+
+  @@index([threadId, createdAt])
+  @@index([departmentId])
+  @@map("comment")
+}

@@ -56,6 +56,12 @@ model Department {
   notifications          Notification[]
   notificationDeliveries NotificationDelivery[]
   templates              Template[]
+  documents              Document[]
+  documentVersions       DocumentVersion[]
+  documentLinks          DocumentLink[]
+  documentAccessGrants   DocumentAccessGrant[]
+  threads                Thread[]
+  comments               Comment[]
 
   @@map("department")
 }

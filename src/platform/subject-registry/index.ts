@@ -28,6 +28,21 @@ export class SubjectNotFoundError extends Error {
   }
 }
 
+export type DeletionCascade = (db: Db, ref: SubjectRef) => Promise<void>;
+
+const cascades = globalSingleton("subject-cascades", () => new Map<string, DeletionCascade>());
+
+/** Services register what to clean up when any subject is deleted (documents unlink, threads close, ...). */
+export function registerDeletionCascade(key: string, fn: DeletionCascade): void {
+  cascades.set(key, fn);
+}
+
+/** Owners call this after deleting a subject row; every registered cascade runs on the same client. */
+export async function subjectDeleted(db: Db, ref: SubjectRef): Promise<void> {
+  for (const fn of cascades.values()) await fn(db, ref);
+  await registrations.get(ref.subjectType)?.onDeleted?.(db, ref.subjectId);
+}
+
 export function register(subjectType: string, registration: SubjectRegistration): void {
   if (registrations.has(subjectType))
     throw new Error(`Subject type "${subjectType}" is already registered`);

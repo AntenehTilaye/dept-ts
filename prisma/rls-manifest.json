@@ -13,6 +13,10 @@
       "table": "class_timetable_slot"
     },
     {
+      "model": "Comment",
+      "table": "comment"
+    },
+    {
       "model": "Course",
       "table": "course"
     },
@@ -23,6 +27,22 @@
     {
       "model": "DepartmentPerson",
       "table": "department_person"
+    },
+    {
+      "model": "Document",
+      "table": "document"
+    },
+    {
+      "model": "DocumentAccessGrant",
+      "table": "document_access_grant"
+    },
+    {
+      "model": "DocumentLink",
+      "table": "document_link"
+    },
+    {
+      "model": "DocumentVersion",
+      "table": "document_version"
     },
     {
       "model": "Enrollment",
@@ -95,6 +115,10 @@
     {
       "model": "Term",
       "table": "term"
+    },
+    {
+      "model": "Thread",
+      "table": "thread"
     },
     {
       "model": "WorkflowInstance",
@@ -197,5 +221,5 @@
       "table": "verification"
     }
   ],
-  "hash": "96580bae72fdfab601606b32e88f19227062494f6d02e615b0179a135d28ceac"
+  "hash": "6682467186c4ab36b34099b003d22d8a67a737c781236398202292c7f87a9273"
 }
