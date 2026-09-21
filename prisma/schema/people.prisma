@@ -26,6 +26,7 @@ model Person {
   teachingAssignments  TeachingAssignment[]
   responsibleResources Resource[]           @relation("ResourceResponsible")
   notifications        Notification[]
+  comments             Comment[]
 
   @@index([email])
   @@index([fullName])
@@ -151,6 +152,7 @@ model Section {
   memberships      StudentSectionMembership[]
   representatives  SectionRepresentative[]
   sectionOfferings SectionOffering[]
+  threads          Thread[]
 
   @@unique([programId, academicYearId, code])
   @@index([departmentId])
@@ -216,6 +218,7 @@ model Group {
 
   members GroupMembership[]
   section Section?
+  threads Thread[]
 
   @@index([departmentId, kind, status])
   @@index([contextType, contextId])

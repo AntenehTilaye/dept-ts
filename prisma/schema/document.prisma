@@ -1,1 +1,92 @@
-// document models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Documents (design part 04 §14): the only place files live. Immutable versions with
+// checksums, polymorphic links with link roles and slot keys, inherited or explicit access.
+
+/// A document identity; versions carry the bytes. Soft-deleted through `deletedAt`. TENANT.
+model Document {
+  id               String     @id @default(cuid())
+  departmentId     String     @map("department_id")
+  department       Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  title            String
+  category         String?
+  currentVersionNo Int        @default(0) @map("current_version_no")
+  accessMode       AccessMode @default(inherit) @map("access_mode")
+  tags             String[]   @default([])
+  retentionClass   String?    @map("retention_class")
+  createdBy        String     @map("created_by")
+  deletedAt        DateTime?  @map("deleted_at")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  versions DocumentVersion[]
+  links    DocumentLink[]
+  grants   DocumentAccessGrant[]
+
+  @@index([departmentId, category])
+  @@index([departmentId, createdBy, createdAt])
+  @@index([tags], type: Gin)
+  @@map("document")
+}
+
+/// One stored object. Append-only: dept_app may only set the lock and extracted-text columns
+/// (migration document_locks); a locked version refuses every update. TENANT.
+model DocumentVersion {
+  id                      String     @id @default(cuid())
+  departmentId            String     @map("department_id")
+  department              Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  documentId              String     @map("document_id")
+  document                Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  versionNo               Int        @map("version_no")
+  storageKey              String     @unique @map("storage_key")
+  mimeType                String     @map("mime_type")
+  sizeBytes               Int        @map("size_bytes")
+  checksum                String
+  originalName            String     @map("original_name")
+  uploadedBy              String     @map("uploaded_by")
+  uploadedAt              DateTime   @default(now()) @map("uploaded_at")
+  note                    String?
+  extractedText           String?    @map("extracted_text")
+  lockedAt                DateTime?  @map("locked_at")
+  lockedByTransitionLogId String?    @map("locked_by_transition_log_id")
+
+  @@unique([documentId, versionNo])
+  @@index([departmentId])
+  @@map("document_version")
+}
+
+/// Polymorphic link of a document to any subject; `slotKey` names a deliverable slot. TENANT.
+model DocumentLink {
+  id           String      @id @default(cuid())
+  departmentId String      @map("department_id")
+  department   Department  @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  documentId   String      @map("document_id")
+  document     Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  subjectType  SubjectType @map("subject_type")
+  subjectId    String      @map("subject_id")
+  linkRole     LinkRole    @map("link_role")
+  slotKey      String      @default("") @map("slot_key")
+  linkedBy     String      @map("linked_by")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  @@unique([documentId, subjectType, subjectId, linkRole, slotKey])
+  @@index([subjectType, subjectId, linkRole, slotKey])
+  @@index([departmentId])
+  @@map("document_link")
+}
+
+/// Explicit access (accessMode = explicit) for a role, person or group. TENANT.
+model DocumentAccessGrant {
+  id           String        @id @default(cuid())
+  departmentId String        @map("department_id")
+  department   Department    @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  documentId   String        @map("document_id")
+  document     Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  granteeType  GranteeType   @map("grantee_type")
+  granteeId    String        @map("grantee_id")
+  permission   DocPermission
+  grantedBy    String        @map("granted_by")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  @@unique([documentId, granteeType, granteeId])
+  @@index([departmentId])
+  @@map("document_access_grant")
+}

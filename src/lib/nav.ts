@@ -29,6 +29,7 @@ const NAV: NavSpec[] = [
   { path: "/courses", label: "Courses", group: "Registry", permission: "academic.manage" },
   { path: "/offerings", label: "Offerings", group: "Registry", permission: "academic.manage" },
   { path: "/resources", label: "Resources", group: "Registry", permission: "academic.manage" },
+  { path: "/documents", label: "Documents", group: "Library", permission: "document.read" },
 ];
 
 export async function navFor(ctx: DeptCtx): Promise<NavItem[]> {

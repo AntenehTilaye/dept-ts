@@ -7,6 +7,8 @@ import { getStudent, currentSectionMembership } from "@/platform/people/students
 import { teachingOf } from "@/platform/academic/teaching";
 import { ActionForm } from "@/components/forms/ActionForm";
 import { AuditPanel } from "@/components/AuditPanel";
+import { SubjectDocuments } from "@/components/documents/SubjectDocuments";
+import { SubjectThread } from "@/components/thread/SubjectThread";
 import { history } from "@/platform/audit/history";
 import { Field, SelectField, fmtDate } from "@/components/forms/Field";
 import { PageHeader } from "@/components/patterns/PageHeader";
@@ -60,6 +62,8 @@ export default async function PersonPage(props: PageProps<"/d/[dept]/people/[per
   const timeline = canEditPerson
     ? await history(db, { subjectType: "person", subjectId: personId }, 30)
     : [];
+  const subject = { subjectType: "person", subjectId: personId };
+  const path = `/d/${dept}/people/${personId}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -216,6 +220,31 @@ export default async function PersonPage(props: PageProps<"/d/[dept]/people/[per
             </CardContent>
           </Card>
         ) : null}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card data-testid="person-documents">
+          <CardHeader>
+            <CardTitle>Documents</CardTitle>
+            <CardDescription>
+              Certificates, CVs and other evidence, versioned. Files are only visible inside{" "}
+              {ctx.departmentName}.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SubjectDocuments ctx={ctx} db={db} subject={subject} linkRole="evidence" path={path} />
+          </CardContent>
+        </Card>
+        <Card data-testid="person-discussion">
+          <CardHeader>
+            <CardTitle>Discussion</CardTitle>
+            <CardDescription>
+              Notes between the person and the department leadership; @mention to notify.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SubjectThread ctx={ctx} db={db} subject={subject} path={path} />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

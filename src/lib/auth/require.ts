@@ -15,19 +15,9 @@ import { dbPolicyStore } from "@/platform/identity/policy-store";
 // and route handlers. The URL department slug is the authority for tenancy; the session's
 // activeOrganizationId is only updated by explicit department selection.
 
-export class UnauthenticatedError extends Error {
-  constructor() {
-    super("Not signed in");
-    this.name = "UnauthenticatedError";
-  }
-}
+import { ForbiddenError, UnauthenticatedError } from "./errors";
 
-export class ForbiddenError extends Error {
-  constructor(message = "Forbidden") {
-    super(message);
-    this.name = "ForbiddenError";
-  }
-}
+export { ForbiddenError, UnauthenticatedError };
 
 export interface Ctx {
   user: { id: string; email: string; name: string; role: string | null };

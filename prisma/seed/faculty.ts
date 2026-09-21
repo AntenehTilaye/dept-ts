@@ -21,6 +21,8 @@ export const FACULTY_SETTINGS: Array<{ key: string; value: unknown; refresh?: bo
   // Notifications to more recipients than this need an explicit confirmation.
   { key: "notify.massSendThreshold", value: 200 },
   { key: "upload.maxBytes", value: 25 * 1024 * 1024 },
+  // Soft-deleted documents are purged (objects and rows) this many days later.
+  { key: "document.retentionDays", value: 90 },
   { key: "import.maxRows", value: 5000 },
   { key: "case.autoCloseDays", value: 7 },
   { key: "appointments.publicRequests", value: true },
