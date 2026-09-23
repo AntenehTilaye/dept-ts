@@ -51,3 +51,15 @@ export function getBoss(): Promise<PgBoss> {
   }
   return globalForBoss.__boss;
 }
+
+/**
+ * Stops the lazily started client. Long-running processes never call this; one-shot scripts
+ * (the seed, CLI tools) must, or the open pool keeps the process alive.
+ */
+export async function stopBoss(): Promise<void> {
+  const pending = globalForBoss.__boss;
+  if (!pending) return;
+  globalForBoss.__boss = undefined;
+  const boss = await pending.catch(() => null);
+  await boss?.stop({ graceful: false, timeout: 5_000 }).catch(() => undefined);
+}

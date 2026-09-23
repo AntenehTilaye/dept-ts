@@ -9,6 +9,10 @@
       "table": "calendar_period"
     },
     {
+      "model": "Case",
+      "table": "case"
+    },
+    {
       "model": "ClassTimetableSlot",
       "table": "class_timetable_slot"
     },
@@ -73,6 +77,10 @@
       "table": "program"
     },
     {
+      "model": "RecurrenceRule",
+      "table": "recurrence_rule"
+    },
+    {
       "model": "ReminderSubscription",
       "table": "reminder_subscription"
     },
@@ -107,6 +115,14 @@
     {
       "model": "StudentSectionMembership",
       "table": "student_section_membership"
+    },
+    {
+      "model": "Task",
+      "table": "task"
+    },
+    {
+      "model": "TaskAssignment",
+      "table": "task_assignment"
     },
     {
       "model": "TeachingAssignment",
@@ -221,5 +237,5 @@
       "table": "verification"
     }
   ],
-  "hash": "6682467186c4ab36b34099b003d22d8a67a737c781236398202292c7f87a9273"
+  "hash": "b98c9e10b3e36231b7e7870a981a74ea81d344296bc61bc20b7196d18efa689f"
 }

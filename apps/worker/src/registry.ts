@@ -8,6 +8,7 @@ import notificationDeliver from "./handlers/notification-deliver";
 import outboxDispatch from "./handlers/outbox-dispatch";
 import overdueSweep from "./handlers/overdue-sweep";
 import reminderFire from "./handlers/reminder-fire";
+import recurrenceSpawn from "./handlers/recurrence-spawn";
 import reminderMaterialize from "./handlers/reminder-materialize";
 import retentionRun from "./handlers/retention-run";
 import workerHeartbeat from "./handlers/worker-heartbeat";
@@ -26,6 +27,7 @@ export const HANDLERS: readonly WorkerHandler[] = [
   overdueSweep,
   calendarAutotransition,
   grantReconcile,
+  recurrenceSpawn,
   retentionRun,
   workerHeartbeat,
 ] as WorkerHandler[];

@@ -62,6 +62,10 @@ model Department {
   documentAccessGrants   DocumentAccessGrant[]
   threads                Thread[]
   comments               Comment[]
+  tasks                  Task[]
+  taskAssignments        TaskAssignment[]
+  recurrenceRules        RecurrenceRule[]
+  cases                  Case[]
 
   @@map("department")
 }

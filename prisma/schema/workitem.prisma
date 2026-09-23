@@ -1,1 +1,117 @@
-// workitem models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Work items (design part 04 §8): ONE Task table for every task-like thing. There is no
+// status column and no workflowInstanceId — the lifecycle lives in the WorkflowInstance whose
+// subject is the task; `completedAt` is a derived cache written only by a `setField` effect.
+// Overdue is always computed (dueAt < now and not terminal), never stored.
+
+/// The single work item. `kind` selects the workflow and the extension table. TENANT.
+model Task {
+  id                       String          @id @default(cuid())
+  departmentId             String          @map("department_id")
+  department               Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  title                    String
+  description              String?
+  kind                     TaskKind        @default(general)
+  priority                 Priority        @default(normal)
+  /// What the task is about (committee, offering, meeting, ...); polymorphic, no FK.
+  contextType              SubjectType?    @map("context_type")
+  contextId                String?         @map("context_id")
+  parentTaskId             String?         @map("parent_task_id")
+  parent                   Task?           @relation("TaskTree", fields: [parentTaskId], references: [id], onDelete: SetNull)
+  children                 Task[]          @relation("TaskTree")
+  /// Set by the feature runtime: task-backed records and per-step tasks.
+  featureRecordId          String?         @unique @map("feature_record_id")
+  featureStepInstanceId    String?         @unique @map("feature_step_instance_id")
+  createdBy                String          @map("created_by")
+  startDate                DateTime?       @map("start_date")
+  dueAt                    DateTime?       @map("due_at")
+  deadlineAnchorJson       Json?           @map("deadline_anchor_json")
+  /// [{ key, label, required }] — satisfied only by DocumentLink(deliverable, slotKey).
+  expectedDeliverablesJson Json            @default("[]") @map("expected_deliverables_json")
+  progressPercent          Int             @default(0) @map("progress_percent")
+  recurrenceRuleId         String?         @map("recurrence_rule_id")
+  recurrenceRule           RecurrenceRule? @relation(fields: [recurrenceRuleId], references: [id], onDelete: SetNull)
+  reminderScheduleKey      String?         @map("reminder_schedule_key")
+  /// Derived cache written by the workflow effect `setField`, never by application code.
+  completedAt              DateTime?       @map("completed_at")
+  rowVersion               Int             @default(1) @map("row_version")
+  createdAt                DateTime        @default(now()) @map("created_at")
+  updatedAt                DateTime        @updatedAt @map("updated_at")
+
+  assignments TaskAssignment[]
+  case        Case?
+
+  @@index([departmentId, kind, dueAt])
+  @@index([contextType, contextId])
+  @@index([departmentId, createdBy])
+  @@map("task")
+}
+
+/// Who owns, contributes to or reviews a task; groups cover audiences snapshotted at creation. TENANT.
+model TaskAssignment {
+  id                     String         @id @default(cuid())
+  departmentId           String         @map("department_id")
+  department             Department     @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  taskId                 String         @map("task_id")
+  task                   Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  assigneeType           AssigneeType   @map("assignee_type")
+  assigneeId             String         @map("assignee_id")
+  role                   AssignmentRole @default(responsible)
+  assignedAt             DateTime       @default(now()) @map("assigned_at")
+  /// The audience spec a group assignee was snapshotted from (for re-resolution).
+  sourceAudienceSpecJson Json?          @map("source_audience_spec_json")
+
+  @@unique([taskId, assigneeType, assigneeId, role])
+  @@index([assigneeType, assigneeId])
+  @@index([departmentId])
+  @@map("task_assignment")
+}
+
+/// Recurrence of a template task; the worker spawns the next occurrence per `nextSpawnAt`. TENANT.
+model RecurrenceRule {
+  id             String     @id @default(cuid())
+  departmentId   String     @map("department_id")
+  department     Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  frequency      Frequency
+  interval       Int        @default(1)
+  /// 0 = Sunday … 6 = Saturday (weekly rules).
+  byWeekday      Int[]      @default([]) @map("by_weekday")
+  byMonthDay     Int?       @map("by_month_day")
+  startsOn       DateTime   @map("starts_on")
+  endsOn         DateTime?  @map("ends_on")
+  count          Int?
+  spawnedCount   Int        @default(0) @map("spawned_count")
+  timezone       String     @default("Africa/Addis_Ababa")
+  nextSpawnAt    DateTime?  @map("next_spawn_at")
+  templateTaskId String?    @map("template_task_id")
+
+  tasks Task[]
+
+  @@index([nextSpawnAt])
+  @@index([departmentId])
+  @@map("recurrence_rule")
+}
+
+/// Follow-up case / section issue: a Task extension keyed by the task id. TENANT.
+model Case {
+  taskId            String       @id @map("task_id")
+  task              Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  departmentId      String       @map("department_id")
+  department        Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  requesterPersonId String?      @map("requester_person_id")
+  requester         Person?      @relation(fields: [requesterPersonId], references: [id], onDelete: SetNull)
+  originType        SubjectType? @map("origin_type")
+  originId          String?      @map("origin_id")
+  sectionId         String?      @map("section_id")
+  section           Section?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  issue             String
+  issueCategory     String?      @map("issue_category")
+  requiredAction    String?      @map("required_action")
+  waitingOn         String?      @map("waiting_on")
+  resolution        String?
+  /// Derived cache written by the workflow effect `setField`.
+  resolvedAt        DateTime?    @map("resolved_at")
+
+  @@index([sectionId])
+  @@index([departmentId])
+  @@map("case")
+}

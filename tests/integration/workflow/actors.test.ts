@@ -213,7 +213,10 @@ describe("actor rules", () => {
       expect(
         await tx.domainEvent.count({ where: { name: "resource.moved", aggregateId: r.id } }),
       ).toBe(1);
-      expect(recorded.some((x) => x.kind === "createTask" && x.instanceId === "inst")).toBe(true);
+      // the work-item phase replaced the createTask recorder with the real effect
+      expect(recorded.some((x) => x.kind === "createTask")).toBe(false);
+      const spawned = await tx.task.findFirstOrThrow({ where: { title: "later" } });
+      expect(spawned).toMatchObject({ contextType: "resource", contextId: r.id });
       await expect(
         runEffects([{ kind: "invokeHandler", args: { handler: "missing" } }], ctx),
       ).rejects.toThrow(/unknown handler/);

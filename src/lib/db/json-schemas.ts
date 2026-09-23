@@ -55,4 +55,9 @@ export const jsonSchemas: Record<string, ZodType> = {
   "TemplateVersion.declaredVariablesJson": z.array(
     z.object({ name: z.string(), required: z.boolean(), type: z.string().optional() }),
   ),
+  "Task.expectedDeliverablesJson": z.array(
+    z.object({ key: z.string(), label: z.string(), required: z.boolean().optional() }),
+  ),
+  "Task.deadlineAnchorJson": z.unknown(),
+  "TaskAssignment.sourceAudienceSpecJson": z.record(z.string(), z.unknown()).nullable(),
 };

@@ -85,6 +85,13 @@ export const QUEUES: readonly QueueSpec[] = [
     cron: "*/15 * * * *",
   },
   {
+    name: "recurrence.spawn",
+    policy: "short",
+    retryLimit: 1,
+    expireInSeconds: 600,
+    cron: "*/15 * * * *",
+  },
+  {
     name: "retention.run",
     policy: "short",
     retryLimit: 1,

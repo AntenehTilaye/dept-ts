@@ -46,6 +46,15 @@ export function registerEffect(kind: EffectKind, handler: EffectHandler): void {
   handlers.set(kind, handler);
 }
 
+/**
+ * Registers a handler only when the kind has none yet. The recording no-ops below run at
+ * module scope, and Next.js may load a second copy of this module after the real handlers
+ * were installed — overwriting them would silently turn notifications into no-ops.
+ */
+function registerDefaultEffect(kind: EffectKind, handler: EffectHandler): void {
+  if (!handlers.has(kind)) handlers.set(kind, handler);
+}
+
 export function registerHandler(
   name: string,
   fn: (ctx: EffectContext, args: Record<string, unknown>) => Promise<void>,
@@ -54,27 +63,35 @@ export function registerHandler(
 }
 
 /** (subjectType, field) pairs setField may write: derived caches only. */
-const SET_FIELD_ALLOW: Record<
-  string,
-  Record<string, { model: string; column: string; idField?: string }>
-> = {
-  course_offering: {
-    decisionNote: { model: "courseOffering", column: "decisionNote" },
-    schemeStructureLockedAt: { model: "courseOffering", column: "schemeStructureLockedAt" },
-  },
-  section_offering: {
-    assessmentLockedAt: { model: "sectionOffering", column: "assessmentLockedAt" },
-    assessmentLockedByPortfolioId: {
-      model: "sectionOffering",
-      column: "assessmentLockedByPortfolioId",
+interface SetFieldTarget {
+  model: string;
+  column: string;
+  idField?: string;
+}
+
+// On globalThis: services extend this list at bootstrap, and Next.js may hold more than one
+// copy of this module (see DEVIATIONS, P4) — a module-local object would lose the additions.
+const SET_FIELD_ALLOW = globalSingleton<Record<string, Record<string, SetFieldTarget>>>(
+  "workflow-setfield-allow",
+  () => ({
+    course_offering: {
+      decisionNote: { model: "courseOffering", column: "decisionNote" },
+      schemeStructureLockedAt: { model: "courseOffering", column: "schemeStructureLockedAt" },
     },
-  },
-  group: {
-    status: { model: "group", column: "status" },
-    deactivatedAt: { model: "group", column: "deactivatedAt" },
-  },
-  workflow_instance: { dueAt: { model: "workflowInstance", column: "dueAt" } },
-};
+    section_offering: {
+      assessmentLockedAt: { model: "sectionOffering", column: "assessmentLockedAt" },
+      assessmentLockedByPortfolioId: {
+        model: "sectionOffering",
+        column: "assessmentLockedByPortfolioId",
+      },
+    },
+    group: {
+      status: { model: "group", column: "status" },
+      deactivatedAt: { model: "group", column: "deactivatedAt" },
+    },
+    workflow_instance: { dueAt: { model: "workflowInstance", column: "dueAt" } },
+  }),
+);
 
 export function allowSetField(
   subjectType: string,
@@ -162,7 +179,7 @@ const NOOP_KINDS: EffectKind[] = [
   "feature",
 ];
 for (const kind of NOOP_KINDS) {
-  registerEffect(kind, async (args, ctx) => {
+  registerDefaultEffect(kind, async (args, ctx) => {
     recorded.push({ kind, args, instanceId: ctx.instance.id });
   });
 }

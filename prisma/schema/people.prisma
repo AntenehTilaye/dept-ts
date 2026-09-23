@@ -27,6 +27,7 @@ model Person {
   responsibleResources Resource[]           @relation("ResourceResponsible")
   notifications        Notification[]
   comments             Comment[]
+  requestedCases       Case[]
 
   @@index([email])
   @@index([fullName])
@@ -153,6 +154,7 @@ model Section {
   representatives  SectionRepresentative[]
   sectionOfferings SectionOffering[]
   threads          Thread[]
+  cases            Case[]
 
   @@unique([programId, academicYearId, code])
   @@index([departmentId])
