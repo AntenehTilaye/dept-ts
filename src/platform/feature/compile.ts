@@ -135,6 +135,8 @@ export interface CompileContext {
 }
 
 const ALWAYS_GUARDS = ["feature.actorAllowed", "feature.stepComplete"];
+/** The branch key a join uses to mean "every branch still open in this group". */
+export const GROUP_BRANCH = "$group";
 
 /** 1. normalise: apply the schema defaults and derive what the code owns. */
 export function normalise(def: unknown, ctx: CompileContext = {}): { def: FeatureDefinition; locks: string[] } {
@@ -149,14 +151,18 @@ export { buildTree as flattenGroups } from "./tree";
 export function compileStates(def: FeatureDefinition, tree: Tree): WorkflowStateJson[] {
   const states: WorkflowStateJson[] = [];
 
-  tree.leaves.forEach((leaf) => {
-    states.push({
-      key: leaf.step.key,
-      label: leaf.step.label,
-      category:
-        leaf.index === 0 ? "initial" : leaf.step.stepType === "wait" ? "waiting" : "active",
+  // a leaf inside a parallel group is a state OF ITS BRANCH, never of the record: the workflow
+  // contract keeps the two lists disjoint, so the record's state stays a single answer
+  tree.leaves
+    .filter((leaf) => !leaf.groupKey)
+    .forEach((leaf) => {
+      states.push({
+        key: leaf.step.key,
+        label: leaf.step.label,
+        category:
+          leaf.index === 0 ? "initial" : leaf.step.stepType === "wait" ? "waiting" : "active",
+      });
     });
-  });
 
   for (const parallel of tree.parallels) {
     const group = parallel.group;
@@ -164,11 +170,6 @@ export function compileStates(def: FeatureDefinition, tree: Tree): WorkflowState
       const leaves = branchLeaves(tree, group.key, branch.key);
       const done = branchDoneState(group.key, branch.key);
       const rejected = branchRejectedState(group.key, branch.key);
-      // the synthetic ends of a branch are states of the branch, never of the record
-      states.push(
-        { key: done, label: `${branch.label} complete`, category: "waiting" },
-        { key: rejected, label: `${branch.label} rejected`, category: "waiting" },
-      );
       return {
         key: branch.key,
         label: branch.label,
@@ -331,7 +332,11 @@ export function compileTransitions(
       requiredFields: [],
       requiredAttachments: [],
       guards: ["feature.parallelComplete"],
-      effects: enterEffect(def, tree, onComplete),
+      // the group is over: whatever branch is still open is skipped before the record moves on
+      effects: [
+        { kind: "completeBranch", args: { groupKey: group.key, branchKey: GROUP_BRANCH } },
+        ...enterEffect(def, tree, onComplete),
+      ],
     });
     if (group.onAnyReject) {
       const onReject = resolveTarget(tree, parallel, group.onAnyReject).state ?? group.onAnyReject;

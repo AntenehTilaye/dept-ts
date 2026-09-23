@@ -60,7 +60,9 @@ function toRow(row: {
  */
 export async function upsertDefinition(
   raw: unknown,
-  opts: { createdBy?: string | null; activate?: boolean } = {},
+  /** `tx` writes on the caller's transaction — publishing a feature compiles several artefacts
+   * that must land together or not at all. */
+  opts: { createdBy?: string | null; activate?: boolean; tx?: Db } = {},
 ): Promise<DefinitionRow> {
   const input = WorkflowDefinitionInput.parse(raw);
   const def: Definition = {
@@ -105,13 +107,15 @@ export async function upsertDefinition(
     });
     return toRow(row);
   };
-  const row = input.departmentId
-    ? await withTenantTx(input.departmentId, write)
-    : await withTenantBypass(
-        { worker: true, jobName: "workflow.definition" },
-        "faculty workflow definition",
-        write,
-      );
+  const row = opts.tx
+    ? await write(opts.tx)
+    : input.departmentId
+      ? await withTenantTx(input.departmentId, write)
+      : await withTenantBypass(
+          { worker: true, jobName: "workflow.definition" },
+          "faculty workflow definition",
+          write,
+        );
   cache.set(row.id, row);
   return row;
 }

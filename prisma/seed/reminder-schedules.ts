@@ -30,6 +30,8 @@ export const SEED_SCHEDULES = [
   { key: "appointment_-1d_-2h", isDefault: false, offsets: [rem(-1)], escalation: null },
   { key: "meeting_-1d_-1h", isDefault: false, offsets: [rem(-1)], escalation: null },
   { key: "duty_-1d", isDefault: false, offsets: [rem(-1)], escalation: null },
+  // a case is nudged while it is open, so its schedule has no deadline offsets of its own
+  { key: "case_interval_nudge", isDefault: false, offsets: [rem(0)], escalation: null },
 ];
 
 export async function seedReminderSchedules(db: PrismaClient) {
