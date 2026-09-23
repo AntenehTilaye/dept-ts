@@ -35,7 +35,16 @@ test.describe("audit and workflows", () => {
     await expect(admin.getByTestId("audit-tenant_bypass-department").first()).toContainText(
       "admin@deptts.local",
     );
+    // the work-item phase seeds the provisional `task` lifecycle (retired again in P9)
     await admin.goto("/admin/workflows");
-    await expect(admin.getByTestId("workflows-empty")).toContainText("feature is published");
+    const row = admin.getByTestId("workflow-task");
+    await expect(row).toContainText("task");
+    await expect(row).toContainText("v1 active");
+    await row.getByRole("link", { name: "task" }).click();
+    await expect(admin.getByRole("heading", { name: "task" })).toBeVisible();
+    await expect(admin.getByRole("heading", { name: /State graph/ })).toBeVisible();
+    await expect(
+      admin.getByText("in_progress → submitted (submit · guards task.requiredDeliverablesLinked)"),
+    ).toBeVisible();
   });
 });

@@ -1,9 +1,46 @@
-import type { JobStatus } from "@/generated/prisma/enums";
+import type { JobKind, JobStatus } from "@/generated/prisma/enums";
 import { getBoss } from "../../lib/db/boss";
 import type { Db } from "../../lib/db/types";
 
 // The ScheduledJob ledger: status transitions driven by the worker handlers, cancellation by
 // key prefix (subject re-anchoring), and the dry run the admin reminders page shows.
+
+/**
+ * Claims a one-shot job by inserting its ledger row: the unique `idempotencyKey` makes a
+ * second attempt (a re-run of a cron, a retry) return false without doing the work again.
+ */
+export async function claimLedgerJob(
+  db: Db,
+  idempotencyKey: string,
+  spec: {
+    kind: JobKind;
+    queue: string;
+    runAt?: Date;
+    departmentId?: string | null;
+    subject?: { subjectType: string; subjectId: string };
+    payload?: unknown;
+  },
+): Promise<boolean> {
+  // createMany + skipDuplicates is ON CONFLICT DO NOTHING: a losing claim must not abort the
+  // caller's transaction the way a unique-violation error would.
+  const { count } = await db.scheduledJob.createMany({
+    data: [
+      {
+        idempotencyKey,
+        kind: spec.kind,
+        queue: spec.queue,
+        runAt: spec.runAt ?? new Date(),
+        departmentId: spec.departmentId ?? null,
+        subjectType: (spec.subject?.subjectType ?? null) as never,
+        subjectId: spec.subject?.subjectId ?? null,
+        payloadJson: (spec.payload ?? {}) as never,
+        status: "running",
+      },
+    ],
+    skipDuplicates: true,
+  });
+  return count === 1;
+}
 
 export async function markRunning(db: Db, idempotencyKey: string): Promise<void> {
   await db.scheduledJob.updateMany({

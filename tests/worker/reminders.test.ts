@@ -4,7 +4,7 @@ import { bootstrap } from "@/lib/bootstrap";
 import { withTenantTx } from "@/lib/db/tenant";
 import { ledgerRow } from "@/platform/scheduler/ledger";
 import { materializeSubscription, subscribeReminders } from "@/platform/scheduler/reminders";
-import { isRegistered, replace } from "@/platform/subject-registry";
+import { replace } from "@/platform/subject-registry";
 import emailSend from "../../apps/worker/src/handlers/email-send";
 import notificationDeliver from "../../apps/worker/src/handlers/notification-deliver";
 import reminderFire from "../../apps/worker/src/handlers/reminder-fire";
@@ -15,14 +15,14 @@ import * as f from "../setup/factories";
 import { awaitJob, startTestBoss } from "../setup/boss";
 
 bootstrap();
-if (!isRegistered("task")) {
-  replace("task", {
-    label: async (_db, id) => `Task ${id}`,
-    snapshot: async (_db, id) => ({ label: `Task ${id}` }),
-    contextOf: async () => ({ departmentId: DEPT_CS }),
-    relationships: async () => [],
-  });
-}
+// the reminders here point at task ids that have no row, so the registry falls back to
+// "<subjectType> <id>"; the fake registration below only fills in the department context
+replace("task", {
+  label: async (_db, id) => `Task ${id}`,
+  snapshot: async (_db, id) => ({ label: `Task ${id}` }),
+  contextOf: async () => ({ departmentId: DEPT_CS }),
+  relationships: async () => [],
+});
 
 let boss: PgBoss;
 beforeAll(async () => {

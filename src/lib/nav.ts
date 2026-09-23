@@ -14,6 +14,7 @@ interface NavSpec {
 
 const NAV: NavSpec[] = [
   { path: "", label: "Overview" },
+  { path: "/my-work", label: "My work", group: "Me", icon: "my-work" },
   { path: "/inbox", label: "Inbox", group: "Me" },
   { path: "/upcoming", label: "Upcoming", group: "Me" },
   {
@@ -22,6 +23,8 @@ const NAV: NavSpec[] = [
     group: "Me",
     icon: "settings",
   },
+  // scoped inside the page: department-wide for task.view, own assignments otherwise
+  { path: "/tasks", label: "Tasks", group: "Work" },
   { path: "/people", label: "People", group: "Registry", permission: "staff.view" },
   { path: "/sections", label: "Sections", group: "Registry", permission: "academic.manage" },
   { path: "/calendar", label: "Calendar", group: "Registry", permission: "academic.manage" },

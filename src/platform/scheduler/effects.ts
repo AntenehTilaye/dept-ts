@@ -7,6 +7,7 @@ import { cancelByPrefix } from "./ledger";
 import { notify } from "./notify";
 import { DeadlineSpec } from "./offsets";
 import { cancelBySubject, subscribeReminders } from "./reminders";
+import { isRegistered, url } from "../subject-registry";
 
 // The scheduler-backed workflow effects, replacing the P4 recorders:
 //   notify                 { templateKey, category, audienceSpec | recipients | recipientRule, ackRequired, declinable, variables, dedupe }
@@ -27,6 +28,21 @@ function objectArg(v: unknown): Record<string, unknown> {
   return typeof v === "object" && v ? (v as Record<string, unknown>) : {};
 }
 
+/**
+ * Named recipient rules a service registers for its own subjects ("task_assignees", ...), so
+ * a definition can address people the scheduler knows nothing about.
+ */
+export type RecipientRule = (ctx: EffectContext) => Promise<string[]>;
+
+const recipientRules = globalSingleton(
+  "notify-recipient-rules",
+  () => new Map<string, RecipientRule>(),
+);
+
+export function registerRecipientRule(name: string, fn: RecipientRule): void {
+  recipientRules.set(name, fn);
+}
+
 async function recipientsOf(
   ctx: EffectContext,
   args: Args,
@@ -36,7 +52,22 @@ async function recipientsOf(
   const rule = typeof args.recipientRule === "string" ? args.recipientRule : "actor";
   if (rule === "actor") return { recipients: ctx.actor?.personId ? [ctx.actor.personId] : [] };
   if (rule === "department_head") return { audienceSpec: { roles: ["department_head"] } };
+  const registered = recipientRules.get(rule);
+  if (registered) return { recipients: await registered(ctx) };
   return { recipients: [] };
+}
+
+/** `actionUrlRule: "subject"` resolves the subject's canonical URL through the registry. */
+async function actionUrlOf(ctx: EffectContext, args: Args): Promise<string | null> {
+  if (typeof args.actionUrl === "string") return args.actionUrl;
+  if (args.actionUrlRule !== "subject") return null;
+  const department = await ctx.tx.department.findUnique({
+    where: { id: ctx.instance.departmentId },
+    select: { code: true },
+  });
+  if (!department) return null;
+  const ref = { subjectType: ctx.instance.subjectType, subjectId: ctx.instance.subjectId };
+  return isRegistered(ref.subjectType) ? url(ref, department.code.toLowerCase()) : null;
 }
 
 export function installSchedulerEffects(): void {
@@ -61,12 +92,14 @@ export function installSchedulerEffects(): void {
         ? args.category
         : "workflow") as NotificationCategory,
       subject: { subjectType: ctx.instance.subjectType, subjectId: ctx.instance.subjectId },
-      actionUrl: typeof args.actionUrl === "string" ? args.actionUrl : null,
+      actionUrl: await actionUrlOf(ctx, args),
       ackRequired: args.ackRequired === true,
       declinable: args.declinable === true,
+      // a literal `dedupe` is scoped to the subject so the same definition cannot collide
+      // across records; without one the key carries the transition and the moment
       dedupeKey:
         typeof args.dedupe === "string"
-          ? args.dedupe
+          ? `${subjectKey(ctx)}:${args.dedupe}`
           : `${subjectKey(ctx)}:${ctx.step.transitionKey}:${Date.now()}`,
       confirmMassSend: args.confirmMassSend === true,
     });

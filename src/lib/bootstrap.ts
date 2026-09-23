@@ -15,6 +15,7 @@ import { setPeriodDependentsResolver } from "@/platform/academic/calendar";
 import { dependentsOfPeriod } from "@/platform/scheduler/reminders";
 import { registerDocumentRetention, registerDocumentSubjects } from "@/platform/document";
 import { installThreadSubscribers, registerThreadSubjects } from "@/platform/thread";
+import { installWorkItemHooks, registerWorkItemSubjects } from "@/platform/workitem";
 
 // Process-wide registrations, loaded once by src/instrumentation.ts (web) and the worker entry
 // point. Idempotent so hot reloads and tests may call it repeatedly.
@@ -29,12 +30,14 @@ export function bootstrap(): void {
   registerAcademicSubjects();
   registerDocumentSubjects();
   registerThreadSubjects();
+  registerWorkItemSubjects();
   setSubjectResolver(resolverWith((departmentId) => getDb(departmentId) as unknown as Db));
   setEnginePolicyStore(dbPolicyStore);
   installGrantSubscribers();
   installSchedulerEffects();
   installSchedulerSubscribers();
   installThreadSubscribers();
+  installWorkItemHooks();
   registerDocumentRetention();
   setPeriodDependentsResolver(async (db, periodId) =>
     (await dependentsOfPeriod(db, periodId)).map((s) => ({

@@ -54,6 +54,42 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
       "Hello {{recipient_name}},\n\nAn update was requested on {{subject_label}}.\n\n{{comment}}\n\nOpen it here: {{action_url}}",
   },
   {
+    key: "task_submitted",
+    kind: "message",
+    variables: [...COMMON, ...SUBJECT, { name: "assignee_name", required: false }],
+    inApp: "{{subject_label}} was submitted for review",
+    emailSubject: "[{{department_code}}] Submitted for review: {{subject_label}}",
+    emailBody:
+      "Hello {{recipient_name}},\n\n{{subject_label}} was submitted{{#assignee_name}} by {{assignee_name}}{{/assignee_name}} and is waiting for your review.\n{{#comment}}\nNote: {{comment}}\n{{/comment}}\nOpen it here: {{action_url}}\n\n{{department_name}}",
+  },
+  {
+    key: "task_revision_required",
+    kind: "message",
+    variables: [...COMMON, ...SUBJECT],
+    inApp: "Revision requested on {{subject_label}}: {{comment}}",
+    emailSubject: "[{{department_code}}] Revision required: {{subject_label}}",
+    emailBody:
+      "Hello {{recipient_name}},\n\nA revision was requested on {{subject_label}}.\n\n{{comment}}\n\nOpen it here: {{action_url}}\n\n{{department_name}}",
+  },
+  {
+    key: "task_completed",
+    kind: "message",
+    variables: [...COMMON, ...SUBJECT],
+    inApp: "{{subject_label}} was completed",
+    emailSubject: "[{{department_code}}] Completed: {{subject_label}}",
+    emailBody:
+      "Hello {{recipient_name}},\n\n{{subject_label}} was completed{{#comment}}: {{comment}}{{/comment}}.\n\nOpen it here: {{action_url}}\n\n{{department_name}}",
+  },
+  {
+    key: "task_declined",
+    kind: "message",
+    variables: [...COMMON, ...SUBJECT, { name: "assignee_name", required: false }],
+    inApp: "{{assignee_name}} declined {{subject_label}}: {{comment}}",
+    emailSubject: "[{{department_code}}] Assignment declined: {{subject_label}}",
+    emailBody:
+      "Hello {{recipient_name}},\n\n{{assignee_name}} declined {{subject_label}}.\n\nReason: {{comment}}\n\nOpen it here: {{action_url}}\n\n{{department_name}}",
+  },
+  {
     key: "deadline_reminder",
     kind: "reminder",
     variables: [...COMMON, ...SUBJECT, ...DEADLINE],

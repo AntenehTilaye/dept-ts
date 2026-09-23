@@ -27,7 +27,7 @@ const NOTIFY_ASSIGN = {
     category: "assignment",
     recipientRule: "actor",
     ackRequired: true,
-    dedupe: "eff:assign",
+    dedupe: "eff-assign",
     variables: { due_date: "tomorrow" },
   },
 };
@@ -89,7 +89,7 @@ describe("scheduler-backed workflow effects", () => {
     );
     await apply(DEPT_CS, inst.id, "draft.start", head);
     const n = await migratorDb.notification.findUnique({
-      where: { dedupeKey: `eff:assign:${person.id}` },
+      where: { dedupeKey: `task:${subjectId}:eff-assign:${person.id}` },
     });
     expect(n).toMatchObject({
       category: "assignment",
@@ -97,7 +97,7 @@ describe("scheduler-backed workflow effects", () => {
       subjectId,
       templateKey: "task_assignment",
     });
-    expect(n?.body).toContain(`Task ${subjectId}`);
+    expect(n?.body?.toLowerCase()).toContain(`task ${subjectId}`.toLowerCase());
     expect(n?.body).toContain("tomorrow");
     const sub = await migratorDb.reminderSubscription.findFirst({ where: { subjectId } });
     expect(sub?.active).toBe(true);

@@ -11,11 +11,15 @@ import { seedDemo } from "./seed/demo";
 import { seedWorkflows } from "./seed/workflows";
 import { seedReminderSchedules } from "./seed/reminder-schedules";
 import { seedTemplates } from "./seed/templates";
+import { bootstrap } from "../src/lib/bootstrap";
+import { stopBoss } from "../src/lib/db/boss";
 
 // Runs via `prisma db seed` under DATABASE_URL_MIGRATE (dept_migrator, BYPASSRLS) for the
 // tables it writes directly; users go through better-auth, which uses the runtime client.
 // Every seeder is idempotent (upsert by key). Module seeders are appended by their phases.
 export async function runSeed(db: PrismaClient) {
+  // the demo seeders call platform services, which need the registries and effects installed
+  bootstrap();
   await db.$executeRaw`SELECT set_config('app.tenant_bypass', 'on', false)`;
   await seedFaculty(db);
   await seedPermissions(db);
@@ -38,6 +42,8 @@ async function main() {
     await runSeed(db);
     console.log("seed: done");
   } finally {
+    // the demo seeders enqueue jobs; the lazily started pg-boss client would keep us alive
+    await stopBoss();
     await db.$disconnect();
   }
 }
