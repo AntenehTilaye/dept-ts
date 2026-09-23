@@ -1,1 +1,123 @@
-// forms models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Forms (design part 04 §9): versioned question sets with stable keys. One engine serves
+// campaigns, standalone submissions bound to a subject, and the per-step forms the feature
+// runtime pins. Answers are normalised rows — never a JSON blob — so aggregation can read them.
+
+/// A form version. NULL departmentId = faculty (system) form a department may override. SHARED.
+model FormDefinition {
+  id              String      @id @default(cuid())
+  departmentId    String?     @map("department_id")
+  department      Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  key             String
+  version         Int
+  kind            FormKind
+  title           String
+  description     String?
+  scoringJson     Json?       @map("scoring_json")
+  /// sha256 over the questions; a new version is only cut when this changes.
+  questionsHash   String      @map("questions_hash")
+  lockedPathsJson Json        @default("[]") @map("locked_paths_json")
+  isSystem        Boolean     @default(false) @map("is_system")
+  status          FormStatus  @default(draft)
+  createdBy       String?     @map("created_by")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  questions   Question[]
+  submissions Submission[]
+  campaigns   Campaign[]
+
+  @@unique([departmentId, key, version])
+  @@index([key, status])
+  @@map("form_definition")
+}
+
+/// One question of a form version; `stableKey` is what answers reference. GLOBAL child.
+model Question {
+  id               String         @id @default(cuid())
+  formDefinitionId String         @map("form_definition_id")
+  form             FormDefinition @relation(fields: [formDefinitionId], references: [id], onDelete: Cascade)
+  stableKey        String         @map("stable_key")
+  order            Int
+  type             QuestionType
+  label            String
+  helpText         String?        @map("help_text")
+  optionsJson      Json?          @map("options_json")
+  sourceBinding    SourceBinding  @default(none) @map("source_binding")
+  bindingArgsJson  Json?          @map("binding_args_json")
+  /// { required, min, max, regex, maxRank, maxItems, accept[], maxFiles, visibleIf }
+  constraintsJson  Json?          @map("constraints_json")
+  scoreWeight      Decimal?       @map("score_weight") @db.Decimal(6, 3)
+  aggregation      Aggregation    @default(none)
+  /// Set on questions inside a repeating group.
+  parentStableKey  String?        @map("parent_stable_key")
+  computedBy       String?        @map("computed_by")
+  isLocked         Boolean        @default(false) @map("is_locked")
+
+  @@unique([formDefinitionId, stableKey])
+  @@index([formDefinitionId, order])
+  @@map("question")
+}
+
+/// One response: to a campaign, or standalone against a subject (committee report, portfolio
+/// narrative, appointment request, feature step). Anonymity is structural — an anonymous row
+/// carries neither respondent nor invitation (enforced by a trigger). TENANT.
+model Submission {
+  id                   String           @id @default(cuid())
+  departmentId         String           @map("department_id")
+  department           Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  formDefinitionId     String           @map("form_definition_id")
+  form                 FormDefinition   @relation(fields: [formDefinitionId], references: [id], onDelete: Restrict)
+  formVersion          Int              @map("form_version")
+  campaignId           String?          @map("campaign_id")
+  campaign             Campaign?        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignSubjectId    String?          @map("campaign_subject_id")
+  campaignSubject      CampaignSubject? @relation(fields: [campaignSubjectId], references: [id], onDelete: SetNull)
+  subjectType          SubjectType?     @map("subject_type")
+  subjectId            String?          @map("subject_id")
+  stepKey              String?          @map("step_key")
+  respondentPersonId   String?          @map("respondent_person_id")
+  respondent           Person?          @relation(fields: [respondentPersonId], references: [id], onDelete: SetNull)
+  /// Deliberately no relation: a foreign key would be a path from response to invitation.
+  invitationId         String?          @map("invitation_id")
+  respondentGroup      EvaluatorGroup?  @map("respondent_group")
+  cohortAttributesJson Json?            @map("cohort_attributes_json")
+  pseudonymHash        String?          @map("pseudonym_hash")
+  version              Int              @default(1)
+  status               SubmissionStatus @default(draft)
+  /// Day-truncated for anonymous campaigns (checked by the same trigger).
+  submittedAt          DateTime?        @map("submitted_at")
+  rowVersion           Int              @default(1) @map("row_version")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  answers Answer[]
+
+  @@index([campaignId, campaignSubjectId])
+  @@index([subjectType, subjectId, stepKey])
+  @@index([respondentPersonId])
+  @@index([departmentId])
+  @@map("submission")
+}
+
+/// One answer cell. The typed columns carry what aggregation and search need. TENANT.
+model Answer {
+  id                String     @id @default(cuid())
+  departmentId      String     @map("department_id")
+  department        Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  submissionId      String     @map("submission_id")
+  submission        Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  questionStableKey String     @map("question_stable_key")
+  /// Row index inside a repeating group (0 for plain questions).
+  groupIndex        Int        @default(0) @map("group_index")
+  valueJson         Json       @map("value_json")
+  numericValue      Decimal?   @map("numeric_value") @db.Decimal(12, 4)
+  rank              Int?
+  refType           String?    @map("ref_type")
+  refId             String?    @map("ref_id")
+  textValue         String?    @map("text_value")
+
+  @@unique([submissionId, questionStableKey, groupIndex])
+  @@index([refType, refId])
+  @@index([departmentId])
+  @@map("answer")
+}

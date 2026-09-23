@@ -28,6 +28,8 @@ model Person {
   notifications        Notification[]
   comments             Comment[]
   requestedCases       Case[]
+  submissions          Submission[]
+  campaignInvitations  CampaignInvitation[]
 
   @@index([email])
   @@index([fullName])

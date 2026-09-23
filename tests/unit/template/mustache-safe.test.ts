@@ -25,14 +25,14 @@ describe("mustache-safe", () => {
     expect(validateBody("{{items.0}}", declared)).toEqual([]);
   });
 
-  it("escapes HTML for in-app and email but not for sms/document", () => {
+  it("renders plain text for every channel: escaping belongs to the sink", () => {
     const vars = { name: "<b>Ann</b>" };
-    expect(renderBody("Hi {{name}}", "inApp", vars, declared)).toBe(
-      "Hi &lt;b&gt;Ann&lt;&#x2F;b&gt;",
-    );
-    expect(renderBody("Hi {{name}}", "emailBody", vars, declared)).toContain("&lt;b&gt;");
-    expect(renderBody("Hi {{name}}", "sms", vars, declared)).toBe("Hi <b>Ann</b>");
-    expect(renderBody("Hi {{name}}", "document", vars, declared)).toBe("Hi <b>Ann</b>");
+    for (const variant of ["inApp", "emailSubject", "emailBody", "sms", "document"] as const)
+      expect(renderBody("Hi {{name}}", variant, vars, declared)).toBe("Hi <b>Ann</b>");
+    // a URL survives intact — mustache escaping used to turn "/" into "&#x2F;" in mail bodies
+    expect(
+      renderBody("Open {{name}}", "emailBody", { name: "http://web:3000/c/tok_1-2" }, declared),
+    ).toBe("Open http://web:3000/c/tok_1-2");
   });
 
   it("renders sections and loops; partials and lambdas are rejected or neutralised", () => {

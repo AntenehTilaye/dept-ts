@@ -3,6 +3,7 @@ import { seedDemoPeople } from "./people";
 import { seedDemoCourses } from "./courses";
 import { seedDemoNotifications } from "./notifications";
 import { seedDemoTasks } from "./tasks";
+import { seedDemoCampaign } from "./campaign";
 
 /** Demo data (SEED_DEMO=1): people, sections, courses, offerings, rosters, timetable, tasks. */
 export async function seedDemo(db: PrismaClient) {
@@ -10,4 +11,5 @@ export async function seedDemo(db: PrismaClient) {
   await seedDemoCourses(db, people);
   await seedDemoNotifications(db);
   await seedDemoTasks(db);
+  await seedDemoCampaign(db);
 }

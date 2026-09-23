@@ -5,8 +5,28 @@
       "table": "academic_year"
     },
     {
+      "model": "AggregationResult",
+      "table": "aggregation_result"
+    },
+    {
+      "model": "Answer",
+      "table": "answer"
+    },
+    {
       "model": "CalendarPeriod",
       "table": "calendar_period"
+    },
+    {
+      "model": "Campaign",
+      "table": "campaign"
+    },
+    {
+      "model": "CampaignInvitation",
+      "table": "campaign_invitation"
+    },
+    {
+      "model": "CampaignSubject",
+      "table": "campaign_subject"
     },
     {
       "model": "Case",
@@ -117,6 +137,10 @@
       "table": "student_section_membership"
     },
     {
+      "model": "Submission",
+      "table": "submission"
+    },
+    {
       "model": "Task",
       "table": "task"
     },
@@ -153,6 +177,10 @@
     {
       "model": "DomainEvent",
       "table": "domain_event"
+    },
+    {
+      "model": "FormDefinition",
+      "table": "form_definition"
     },
     {
       "model": "ReminderSchedule",
@@ -217,6 +245,10 @@
       "table": "person"
     },
     {
+      "model": "Question",
+      "table": "question"
+    },
+    {
       "model": "Session",
       "table": "session"
     },
@@ -237,5 +269,5 @@
       "table": "verification"
     }
   ],
-  "hash": "b98c9e10b3e36231b7e7870a981a74ea81d344296bc61bc20b7196d18efa689f"
+  "hash": "2a6d554e14a14715c752d8c2398cf61f407eda43111509c7f39d5e593a86f86f"
 }

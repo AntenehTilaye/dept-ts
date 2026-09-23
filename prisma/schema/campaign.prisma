@@ -1,1 +1,123 @@
-// campaign models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Campaigns (design part 04 §10): a windowed run of a form over an audience — evaluations,
+// add/drop, electives, preferences and surveys are all the same machinery with a different
+// `kind`. The lifecycle itself arrives with the seeded `campaign` feature; this phase owns the
+// data, the tokens, the anonymity guarantees and the aggregation.
+
+/// One run of a form over an audience inside a term. TENANT.
+model Campaign {
+  id                     String         @id @default(cuid())
+  departmentId           String         @map("department_id")
+  department             Department     @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  kind                   CampaignKind
+  title                  String
+  formDefinitionId       String         @map("form_definition_id")
+  form                   FormDefinition @relation(fields: [formDefinitionId], references: [id], onDelete: Restrict)
+  formVersion            Int            @map("form_version")
+  termId                 String         @map("term_id")
+  term                   Term           @relation(fields: [termId], references: [id], onDelete: Restrict)
+  /// { opens: {at} | {periodKind, edge, offsetDays}, closes: {...} }
+  windowAnchorJson       Json           @map("window_anchor_json")
+  resolvedOpensAt        DateTime       @map("resolved_opens_at")
+  resolvedClosesAt       DateTime       @map("resolved_closes_at")
+  anonymityMode          Anonymity      @default(identified) @map("anonymity_mode")
+  submissionRule         SubmissionRule @default(single) @map("submission_rule")
+  audienceSpecJson       Json           @map("audience_spec_json")
+  audienceResolutionMode AudienceMode   @default(snapshot_at_publish) @map("audience_resolution_mode")
+  subjectMode            SubjectMode    @default(none) @map("subject_mode")
+  invitationTemplateKey  String         @default("campaign_invitation") @map("invitation_template_key")
+  reminderScheduleKey    String         @default("default_7_3_1_0_overdue") @map("reminder_schedule_key")
+  aggregationSpecJson    Json?          @map("aggregation_spec_json")
+  exportSpecId           String?        @map("export_spec_id")
+  minResponsesForReport  Int            @default(5) @map("min_responses_for_report")
+  optionsJson            Json           @default("{}") @map("options_json")
+  /// Set once the `campaign` feature is seeded and the rows are backfilled.
+  featureRecordId        String?        @unique @map("feature_record_id")
+  /// Set by publish(); an unpublished campaign has no invitations and no window jobs. There is
+  /// no status column: whether it is open follows from the window and the workflow (P15).
+  publishedAt            DateTime?      @map("published_at")
+  closedAt               DateTime?      @map("closed_at")
+  aggregatedAt           DateTime?      @map("aggregated_at")
+  createdBy              String         @map("created_by")
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
+
+  subjects    CampaignSubject[]
+  invitations CampaignInvitation[]
+  submissions Submission[]
+  results     AggregationResult[]
+
+  @@index([departmentId, termId, kind])
+  @@map("campaign")
+}
+
+/// What is being evaluated / chosen (an instructor, an offering, an elective ...). TENANT.
+model CampaignSubject {
+  id                        String              @id @default(cuid())
+  departmentId              String              @map("department_id")
+  department                Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  campaignId                String              @map("campaign_id")
+  campaign                  Campaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  subjectType               CampaignSubjectType @map("subject_type")
+  subjectId                 String              @map("subject_id")
+  label                     String
+  capacity                  Int?
+  evaluatorAudienceSpecJson Json?               @map("evaluator_audience_spec_json")
+  evaluatorGroup            EvaluatorGroup?     @map("evaluator_group")
+
+  invitations CampaignInvitation[]
+  submissions Submission[]
+  results     AggregationResult[]
+
+  @@unique([campaignId, subjectType, subjectId, evaluatorGroup])
+  @@index([departmentId])
+  @@map("campaign_subject")
+}
+
+/// A one-time invitation: only the sha256 of the token is stored. TENANT.
+model CampaignInvitation {
+  id             String           @id @default(cuid())
+  departmentId   String           @map("department_id")
+  department     Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  campaignId     String           @map("campaign_id")
+  campaign       Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  personId       String           @map("person_id")
+  person         Person           @relation(fields: [personId], references: [id], onDelete: Cascade)
+  subjectId      String?          @map("subject_id")
+  subject        CampaignSubject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  tokenHash      String           @unique @map("token_hash")
+  status         InvitationStatus @default(pending)
+  remindersSent  Int              @default(0) @map("reminders_sent")
+  lastReminderAt DateTime?        @map("last_reminder_at")
+  /// Day-truncated for anonymous campaigns so it cannot be correlated with a submission.
+  submittedAt    DateTime?        @map("submitted_at")
+  expiresAt      DateTime         @map("expires_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  @@unique([campaignId, personId, subjectId])
+  @@index([personId, status])
+  @@index([departmentId])
+  @@map("campaign_invitation")
+}
+
+/// A computed statistic per question (and optional subject / group-by cell). TENANT.
+model AggregationResult {
+  id                String           @id @default(cuid())
+  departmentId      String           @map("department_id")
+  department        Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  campaignId        String           @map("campaign_id")
+  campaign          Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  subjectId         String?          @map("subject_id")
+  subject           CampaignSubject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  questionStableKey String           @map("question_stable_key")
+  groupByKey        String           @default("") @map("group_by_key")
+  groupByJson       Json             @default("{}") @map("group_by_json")
+  n                 Int
+  statsJson         Json             @map("stats_json")
+  /// True when n is below the k-anonymity threshold: the stats are withheld.
+  suppressed        Boolean          @default(false)
+  computedAt        DateTime         @default(now()) @map("computed_at")
+
+  @@unique([campaignId, subjectId, questionStableKey, groupByKey])
+  @@index([departmentId])
+  @@map("aggregation_result")
+}

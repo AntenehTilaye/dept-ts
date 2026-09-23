@@ -43,6 +43,7 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   workflows: WorkflowIcon,
   audit: ScrollTextIcon,
   templates: FileTextIcon,
+  forms: ClipboardListIcon,
   reminders: MailIcon,
   jobs: ListChecksIcon,
 };

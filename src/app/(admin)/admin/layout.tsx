@@ -11,6 +11,7 @@ const NAV: NavItem[] = [
   { href: "/admin/permissions" as Route, label: "Permissions", group: "Access" },
   { href: "/admin/settings" as Route, label: "Settings", group: "Configuration" },
   { href: "/admin/templates" as Route, label: "Templates", group: "Configuration" },
+  { href: "/admin/forms" as Route, label: "Forms", group: "Configuration" },
   { href: "/admin/reminders" as Route, label: "Reminders", group: "Configuration" },
   { href: "/admin/workflows" as Route, label: "Workflows", group: "Operations" },
   { href: "/admin/jobs" as Route, label: "Jobs", group: "Operations" },

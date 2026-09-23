@@ -158,6 +158,12 @@ services:
       MAILPIT_URL: http://mailpit:8025
       DATABASE_URL: postgresql://dept_app:dept_app@db:5432/dept_e2e
       DATABASE_URL_MIGRATE: postgresql://dept_migrator:dept_migrator@db:5432/dept_e2e
+      # the global setup runs the app's own seed, which builds invitation links and hashes
+      BETTER_AUTH_URL: http://web:3000
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-only-secret-please-change-0123456789}
+      SMTP_URL: smtp://mailpit:1025
+      MAIL_FROM: "DeptTS <noreply@deptts.local>"
+      UPLOAD_DIR: /tmp/uploads
       SEED_DEMO: "1"
       SEED_AUTO_PUBLISH: "1"
       CI: "true"

@@ -11,6 +11,7 @@ import { seedDemo } from "./seed/demo";
 import { seedWorkflows } from "./seed/workflows";
 import { seedReminderSchedules } from "./seed/reminder-schedules";
 import { seedTemplates } from "./seed/templates";
+import { seedForms } from "./seed/forms";
 import { bootstrap } from "../src/lib/bootstrap";
 import { stopBoss } from "../src/lib/db/boss";
 
@@ -29,6 +30,7 @@ export async function runSeed(db: PrismaClient) {
   await seedWorkflows(db);
   await seedReminderSchedules(db);
   await seedTemplates(db);
+  await seedForms(db);
   if (process.env.SEED_DEMO === "1") await seedDemo(db);
 }
 
