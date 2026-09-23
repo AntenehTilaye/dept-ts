@@ -73,6 +73,11 @@ model Department {
   campaignSubjects       CampaignSubject[]
   campaignInvitations    CampaignInvitation[]
   aggregationResults     AggregationResult[]
+  featureDefinitions     FeatureDefinition[]
+  featureRecords         FeatureRecord[]
+  featureStepInstances   FeatureStepInstance[]
+  featureNumberSequences FeatureNumberSequence[]
+  featureMigrations      FeatureMigration[]
 
   @@map("department")
 }
