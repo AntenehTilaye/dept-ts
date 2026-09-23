@@ -60,4 +60,25 @@ export const jsonSchemas: Record<string, ZodType> = {
   ),
   "Task.deadlineAnchorJson": z.unknown(),
   "TaskAssignment.sourceAudienceSpecJson": z.record(z.string(), z.unknown()).nullable(),
+  "FormDefinition.scoringJson": z.unknown(),
+  "FormDefinition.lockedPathsJson": z.array(z.string()),
+  "Question.optionsJson": z
+    .array(z.object({ value: z.string(), label: z.string(), score: z.number().optional() }))
+    .nullable(),
+  "Question.bindingArgsJson": z.record(z.string(), z.unknown()).nullable(),
+  "Question.constraintsJson": z.record(z.string(), z.unknown()).nullable(),
+  "Submission.cohortAttributesJson": z.record(z.string(), z.unknown()).nullable(),
+  "Answer.valueJson": z.unknown(),
+  "Campaign.windowAnchorJson": z.object({
+    opens: z.record(z.string(), z.unknown()),
+    closes: z.record(z.string(), z.unknown()),
+  }),
+  "Campaign.audienceSpecJson": z.record(z.string(), z.unknown()),
+  "Campaign.aggregationSpecJson": z
+    .object({ groupBy: z.array(z.string()).optional(), textSamples: z.number().optional() })
+    .nullable(),
+  "Campaign.optionsJson": z.record(z.string(), z.unknown()),
+  "CampaignSubject.evaluatorAudienceSpecJson": z.record(z.string(), z.unknown()).nullable(),
+  "AggregationResult.groupByJson": z.record(z.string(), z.unknown()),
+  "AggregationResult.statsJson": z.record(z.string(), z.unknown()),
 };

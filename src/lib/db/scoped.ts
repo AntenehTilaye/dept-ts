@@ -102,14 +102,21 @@ function delegateName(model: string): string {
 
 /** Prisma client extension: scope every model operation of the given department. */
 export function forDepartment(departmentId: string) {
-  return Prisma.defineExtension((client) =>
-    client.$extends({
+  return Prisma.defineExtension((client) => {
+    // The interactive-transaction signature is narrowed on purpose: inferring it through the
+    // extension's generic arguments makes the union of every model operation too large for
+    // TypeScript to represent (TS2590) once the schema grows.
+    const scopedTx = <T>(fn: (tx: Db) => Promise<T>): Promise<T> =>
+      (
+        client as unknown as { $transaction<R>(f: (tx: Db) => Promise<R>): Promise<R> }
+      ).$transaction(fn);
+    return client.$extends({
       name: `dept:${departmentId}`,
       query: {
         // Raw queries carry no model: run them inside a department transaction too.
         async $allOperations({ model, operation, args, query }) {
           if (model) return query(args);
-          return client.$transaction(async (tx) => {
+          return scopedTx(async (tx) => {
             await tx.$executeRaw`SELECT set_config('app.current_department_id', ${departmentId}, true)`;
             const raw = tx as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>;
             const fn = raw[operation];
@@ -122,12 +129,15 @@ export function forDepartment(departmentId: string) {
           });
         },
         $allModels: {
-          async $allOperations({ model, operation, args }) {
+          async $allOperations(params) {
+            const { model, operation } = params;
+            // one narrow type for both branches: the union of every model's args is too large
+            const args = params.args as AnyArgs;
             const scoped = TENANT_MODELS.has(model) || SHARED_MODELS.has(model);
-            const finalArgs = scoped
-              ? injectDepartmentId(model, operation, args as AnyArgs, departmentId)
+            const finalArgs: AnyArgs = scoped
+              ? injectDepartmentId(model, operation, args, departmentId)
               : args;
-            return client.$transaction(async (tx) => {
+            return scopedTx(async (tx) => {
               await tx.$executeRaw`SELECT set_config('app.current_department_id', ${departmentId}, true)`;
               const delegate = (
                 tx as unknown as Record<string, Record<string, (a: unknown) => Promise<unknown>>>
@@ -141,8 +151,8 @@ export function forDepartment(departmentId: string) {
           },
         },
       },
-    }),
-  );
+    });
+  });
 }
 
 export type ScopedClient = ReturnType<typeof scopedClient>;

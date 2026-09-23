@@ -66,6 +66,13 @@ model Department {
   taskAssignments        TaskAssignment[]
   recurrenceRules        RecurrenceRule[]
   cases                  Case[]
+  formDefinitions        FormDefinition[]
+  submissions            Submission[]
+  answers                Answer[]
+  campaigns              Campaign[]
+  campaignSubjects       CampaignSubject[]
+  campaignInvitations    CampaignInvitation[]
+  aggregationResults     AggregationResult[]
 
   @@map("department")
 }

@@ -40,6 +40,7 @@ model Term {
   periods        CalendarPeriod[]
   offerings      CourseOffering[]
   timetableSlots ClassTimetableSlot[]
+  campaigns      Campaign[]
 
   @@unique([academicYearId, ordinal])
   @@index([departmentId, status])

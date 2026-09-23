@@ -1,6 +1,9 @@
 import type { PgBoss } from "pg-boss";
 import type { WorkerHandler } from "./handlers/types";
 import calendarAutotransition from "./handlers/calendar-autotransition";
+import campaignAggregate from "./handlers/campaign-aggregate";
+import campaignClose from "./handlers/campaign-close";
+import campaignOpen from "./handlers/campaign-open";
 import emailDead from "./handlers/email-dead";
 import emailSend from "./handlers/email-send";
 import grantReconcile from "./handlers/grant-reconcile";
@@ -28,6 +31,9 @@ export const HANDLERS: readonly WorkerHandler[] = [
   calendarAutotransition,
   grantReconcile,
   recurrenceSpawn,
+  campaignOpen,
+  campaignClose,
+  campaignAggregate,
   retentionRun,
   workerHeartbeat,
 ] as WorkerHandler[];

@@ -85,6 +85,27 @@ export const QUEUES: readonly QueueSpec[] = [
     cron: "*/15 * * * *",
   },
   {
+    name: "campaign.open",
+    policy: "standard",
+    retryLimit: 3,
+    retryDelay: 30,
+    expireInSeconds: 600,
+  },
+  {
+    name: "campaign.close",
+    policy: "standard",
+    retryLimit: 3,
+    retryDelay: 30,
+    expireInSeconds: 600,
+  },
+  {
+    name: "campaign.aggregate",
+    policy: "standard",
+    retryLimit: 2,
+    retryDelay: 60,
+    expireInSeconds: 900,
+  },
+  {
     name: "recurrence.spawn",
     policy: "short",
     retryLimit: 1,

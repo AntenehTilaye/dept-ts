@@ -5,7 +5,10 @@
 #   docker compose -f compose.yaml -f compose.e2e.yaml down
 services:
   web:
-    command: sh -c "npx prisma migrate deploy && npx prisma db seed && npm run build && npm run start"
+    # The Playwright global setup is the only thing that seeds: a second seed here would mail a
+    # first set of campaign invitations whose tokens the global setup's truncate then deletes,
+    # and a test reading the mailbox could pick that dead link.
+    command: sh -c "npx prisma migrate deploy && npm run build && npm run start"
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://dept_app:dept_app@db:5432/dept_e2e

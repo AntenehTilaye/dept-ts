@@ -90,6 +90,15 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
       "Hello {{recipient_name}},\n\n{{assignee_name}} declined {{subject_label}}.\n\nReason: {{comment}}\n\nOpen it here: {{action_url}}\n\n{{department_name}}",
   },
   {
+    key: "campaign_invitation",
+    kind: "message",
+    variables: [...COMMON, ...SUBJECT, ...DEADLINE],
+    inApp: "{{title}} is open until {{deadline}}",
+    emailSubject: "[{{department_code}}] {{title}}",
+    emailBody:
+      "Hello {{recipient_name}},\n\n{{title}} is open until {{deadline}}. Your personal link (usable once):\n\n{{action_url}}\n\nPlease do not forward it.\n\n{{department_name}}",
+  },
+  {
     key: "deadline_reminder",
     kind: "reminder",
     variables: [...COMMON, ...SUBJECT, ...DEADLINE],

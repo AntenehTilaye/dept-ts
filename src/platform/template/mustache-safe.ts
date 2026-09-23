@@ -1,8 +1,12 @@
 import Mustache from "mustache";
 
-// Logic-less mustache with the sharp edges removed: partials and lambdas are rejected, HTML
-// escaping depends on the channel, undeclared variables fail at save, missing required ones at
-// render.
+// Logic-less mustache with the sharp edges removed: partials and lambdas are rejected,
+// undeclared variables fail at save, missing required ones at render.
+//
+// Every variant renders as plain text. Escaping belongs to the sink, not to the renderer: the
+// in-app variant is React text and the mail body is escaped by `wrapHtml` on its way into the
+// HTML part. Escaping here would escape a second time — it turned the "/" of a campaign link
+// into "&#x2F;" in the text/plain part of the invitation mail.
 
 export type Variant = "inApp" | "emailSubject" | "emailBody" | "sms" | "document";
 
@@ -21,8 +25,6 @@ export class TemplateError extends Error {
     this.name = "TemplateError";
   }
 }
-
-const ESCAPED: ReadonlySet<Variant> = new Set(["inApp", "emailBody", "emailSubject"]);
 
 /** Top-level names referenced by a body (sections walk into their children). */
 export function referencedNames(body: string): string[] {
@@ -72,7 +74,7 @@ function stripFunctions(value: unknown): unknown {
 /** Renders a variant; required declared variables must be present (non-empty). */
 export function renderBody(
   body: string,
-  variant: Variant,
+  _variant: Variant,
   variables: Record<string, unknown>,
   declared: DeclaredVariable[] = [],
 ): string {
@@ -89,6 +91,5 @@ export function renderBody(
     );
   referencedNames(body); // rejects partials
   const view = stripFunctions(variables) as Record<string, unknown>;
-  const escape = ESCAPED.has(variant) ? Mustache.escape : (s: string) => s;
-  return Mustache.render(body, view, undefined, { escape });
+  return Mustache.render(body, view, undefined, { escape: (s: string) => s });
 }
