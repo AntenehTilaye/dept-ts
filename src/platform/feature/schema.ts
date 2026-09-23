@@ -490,6 +490,11 @@ export type FeatureDefinition = z.infer<typeof FeatureDefinitionSchema>;
 /** The definition as an author writes it, before defaults are applied. */
 export type FeatureDefinitionInput = z.input<typeof FeatureDefinitionSchema>;
 
+// The actor and assignee rules are the workflow's: a definition compiles into transitions that
+// carry them verbatim, so there is one vocabulary for "who may do this".
+export { ActorRule, AssigneeRule } from "../workflow/actor-rules";
+export type { ActorRule as ActorRuleType, AssigneeRule as AssigneeRuleType } from "../workflow/actor-rules";
+
 export const NEXT = "$next";
 export const SELF = "$self";
 
