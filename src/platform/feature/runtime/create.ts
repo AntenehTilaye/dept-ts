@@ -171,11 +171,8 @@ async function createBacking(
       dueAt: header.dueAt,
       assignees: header.assignees,
       expectedDeliverables: header.deliverables,
-      keepDraft: true,
-      // the record owns the lifecycle: one workflow instance, on the record
-      skipWorkflow: true,
+      featureRecordId: record.id,
     });
-    await tx.task.update({ where: { id: task.id }, data: { featureRecordId: record.id } });
     await tx.featureRecord.update({ where: { id: record.id }, data: { taskId: task.id } });
     record.taskId = task.id;
     if (backing.extension === "case") await createCaseExtension(tx, record, task.id);
@@ -229,6 +226,8 @@ function taskHeader(record: RecordRow): {
   const assignees: { type: "person" | "group" | "audience"; id?: string; audienceSpec?: { roles: string[] } }[] = [];
   const assignee = text("assignee");
   if (assignee) assignees.push({ type: "person", id: assignee });
+  const group = text("assignee_group");
+  if (group) assignees.push({ type: "group", id: group });
   const roles = Array.isArray(data.audience) ? data.audience.map(String).filter(Boolean) : [];
   if (roles.length) assignees.push({ type: "audience", audienceSpec: { roles } });
 

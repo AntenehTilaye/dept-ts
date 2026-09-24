@@ -1,5 +1,6 @@
 import type { Relationship } from "../../identity/levels";
 import { register } from "../../subject-registry";
+import { assigneePersonIds } from "../../workitem/assignments";
 
 // How the rest of the system sees a feature record. Everything generic — permissions, documents,
 // threads, notifications, search, audit — addresses records through these two registrations, so
@@ -44,9 +45,9 @@ export function registerFeatureSubjects(): void {
       const rels: Relationship[] = [];
       if (r.ownerPersonId === personId) rels.push("owner");
       if (r.createdByPersonId === personId) rels.push("creator", "requester");
-      const steps = await db.featureStepInstance.findMany({
-        where: { recordId: id, status: "active" },
-      });
+      // every step the person has ever been given, not only the one open right now: somebody
+      // who did the work keeps seeing the record while a reviewer holds it
+      const steps = await db.featureStepInstance.findMany({ where: { recordId: id } });
       for (const step of steps) {
         if (step.assigneeType === "person" && step.assigneeId === personId) rels.push("assignee");
         if (step.assigneeType === "group" && step.assigneeId) {
@@ -56,6 +57,10 @@ export function registerFeatureSubjects(): void {
           if (member) rels.push("assignee");
         }
       }
+      // a task-backed record is assigned through its Task row, which is where a whole audience
+      // of assignees lives
+      if (r.taskId && (await assigneePersonIds(db, r.taskId)).includes(personId))
+        rels.push("assignee");
       return Array.from(new Set(rels));
     },
     variables: async (db, id) => {

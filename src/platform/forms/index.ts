@@ -1,4 +1,5 @@
 export * from "./bindings";
+export * from "./bound-options";
 export * from "./definitions";
 export * from "./field-schema";
 export * from "./submissions";

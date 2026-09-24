@@ -113,7 +113,7 @@ test.describe("documents and discussion", () => {
         { timeout: 90_000, intervals: [3_000] },
       )
       .toBeGreaterThan(0);
-    const item = head.getByTestId("notification-mention").filter({ hasText: "mentioned you" });
+    const item = head.getByTestId("notification-person").filter({ hasText: "mentioned you" });
     await item.getByRole("link", { name: "Open" }).click();
     await expect(head).toHaveURL(new RegExp(`/d/cs/people/${personId}`));
     await expect(head.getByTestId("thread-panel")).toContainText("Please review my certificate");

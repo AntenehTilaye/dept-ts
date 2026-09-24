@@ -13,9 +13,9 @@ import {
   type EffectContext,
 } from "../workflow/effects";
 import { registerGuard } from "../workflow/guards";
+import { createTaskRecord } from "../feature/runtime/task-record";
 import { assigneePersonIds } from "./assignments";
 import {
-  createTask,
   deliverableStatus,
   taskInstance,
   transition,
@@ -113,7 +113,9 @@ export function installWorkItemHooks(): void {
         ? (args.expectedDeliverables as CreateTaskInput["expectedDeliverables"])
         : [],
     };
-    await createTask(ctx.tx, { ...actor, departmentId: ctx.instance.departmentId }, spec);
+    // follow-up work is a task like any other: a record of the `task` feature, with the one
+    // lifecycle every task has
+    await createTaskRecord(ctx.tx, ctx.instance.departmentId, actor, spec);
   });
 
   // the derived caches a task transition may write

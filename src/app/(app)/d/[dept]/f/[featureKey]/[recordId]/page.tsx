@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Route } from "next";
 import { dbOf, pageContext } from "@/lib/auth/page";
 import { actorOf, requireCan } from "@/lib/auth/require";
@@ -9,6 +9,7 @@ import { FeatureRecordShell } from "@/features/runtime/FeatureRecordShell";
 import { SubjectDocuments } from "@/components/documents/SubjectDocuments";
 import { SubjectThread } from "@/components/thread/SubjectThread";
 import { surfaceFor } from "@/modules/surfaces";
+import { TaskActionsPanel } from "@/modules/tasks/TaskActionsPanel";
 import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,18 @@ export default async function RecordPage(
   const db = dbOf(ctx);
 
   const model = await featureRecord(db, recordId, actorOf(ctx));
-  if (!model || model.resolved.key !== featureKey) notFound();
+  if (!model) {
+    // a notification minted before the feature kernel (or one that still addresses the Task row)
+    // carries the task id; the record is what every page is addressed by
+    const task = await db.task.findUnique({
+      where: { id: recordId },
+      select: { featureRecordId: true },
+    });
+    if (task?.featureRecordId)
+      redirect(`/d/${dept}/f/${featureKey}/${task.featureRecordId}` as Route);
+    notFound();
+  }
+  if (model.resolved.key !== featureKey) notFound();
   await requireCan(
     ctx,
     `feature.${featureKey}.view`,
@@ -77,6 +89,15 @@ export default async function RecordPage(
       extras={
         [
           ...(extras.panels ?? []),
+          ...(record.taskId
+            ? [
+                {
+                  key: "task-actions",
+                  label: "Nudge",
+                  content: <TaskActionsPanel dept={dept} taskId={record.taskId} />,
+                },
+              ]
+            : []),
           ...(activeSteps.length
           ? [
               {

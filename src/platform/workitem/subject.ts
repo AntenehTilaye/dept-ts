@@ -12,13 +12,23 @@ export function registerWorkItemSubjects(): void {
     snapshot: async (db, id) => {
       const t = await db.task.findUnique({ where: { id } });
       if (!t) return null;
-      const instance = await db.workflowInstance.findFirst({
-        where: { subjectType: "task", subjectId: id },
-        select: { currentState: true },
-      });
+      // the state lives on the feature record the task is; a row from before the feature
+      // kernel still has a workflow instance of its own
+      const record = t.featureRecordId
+        ? await db.featureRecord.findUnique({
+            where: { id: t.featureRecordId },
+            select: { currentStateKey: true },
+          })
+        : null;
+      const instance = record
+        ? null
+        : await db.workflowInstance.findFirst({
+            where: { subjectType: "task", subjectId: id },
+            select: { currentState: true },
+          });
       return {
         label: t.title,
-        status: instance?.currentState ?? undefined,
+        status: record?.currentStateKey ?? instance?.currentState ?? undefined,
         departmentId: t.departmentId,
         data: { kind: t.kind, dueAt: t.dueAt, priority: t.priority },
       };

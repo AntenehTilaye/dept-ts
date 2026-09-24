@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { dbOf, pageContext } from "@/lib/auth/page";
 import { actorOf, requireCan } from "@/lib/auth/require";
 import { availableActions, getStepContext } from "@/platform/feature";
+import { boundOptionsFor } from "@/platform/forms";
 import { answersOf } from "@/platform/forms/submissions";
 import { fieldsOf } from "@/platform/forms/definitions";
 import { StepForm } from "@/features/runtime/StepForm";
@@ -43,6 +44,12 @@ export default async function StepPage(
         }))
       : [];
   const answers = submission ? answersOf(submission.answers, fields) : {};
+  const boundOptions = await boundOptionsFor(fields, {
+    db,
+    departmentId: ctx.departmentId,
+    personId: ctx.personId,
+    subject: { subjectType: "feature_record", subjectId: recordId },
+  });
 
   const actions = (await availableActions(db, recordId, actorOf(ctx)))
     .filter((action) => action.stepKey === stepKey && (!branch || action.branchKey === branch))
@@ -91,6 +98,7 @@ export default async function StepPage(
             stepKey={stepKey}
             branchKey={branch}
             fields={fields}
+            boundOptions={boundOptions}
             initialAnswers={answers}
             actions={actions}
             readOnly={readOnly}

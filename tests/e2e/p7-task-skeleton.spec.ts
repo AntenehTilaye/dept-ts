@@ -2,6 +2,9 @@ import { expect, test } from "./fixtures/auth";
 
 const TXT = Buffer.from("The CS201 examination paper.\n");
 
+// The task journey, unchanged since P7 — but there is no task module any more: a task is a
+// record of the `task` feature, created, shown and moved by the generic feature runtime.
+
 test.describe("task skeleton", () => {
   test.setTimeout(150_000);
 
@@ -12,29 +15,36 @@ test.describe("task skeleton", () => {
     const stamp = new Date().toISOString().slice(11, 19).replace(/:/g, "");
     const title = `Draft the CS201 rubric ${stamp}`;
 
-    // create the task with a required deliverable, due in two days
+    // create the task with a required deliverable, due in two days. /d/cs/tasks/new is the
+    // readable URL of the feature's own create page.
     await dh.goto("/d/cs/tasks/new");
     await dh.getByLabel("Title").fill(title);
-    await dh.getByLabel("Description").fill("Draft the marking rubric and upload it here.");
+    await dh.getByLabel("What has to be done").fill("Draft the marking rubric and upload it here.");
     const due = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 16);
     await dh.getByLabel("Due").fill(due);
-    await dh.getByLabel("Person").selectOption({ label: "Instructor One" });
-    await dh.getByLabel("Deliverable slots").fill("rubric | Marking rubric | required");
+    await dh.getByLabel("Assigned to").selectOption({ label: "Instructor One" });
+    const deliverables = dh.getByTestId("group-deliverables");
+    await deliverables.getByRole("button", { name: "Add entry" }).click();
+    await deliverables.getByLabel("Key").fill("rubric");
+    await deliverables.getByLabel("Label").fill("Marking rubric");
+    await deliverables.getByLabel("Required").check();
     await dh.getByRole("button", { name: "Create task" }).click();
     // the "new" page redirects to the record; exclude it so the id is never "new"
-    await expect(dh).toHaveURL(/\/d\/cs\/tasks\/(?!new$)[a-z0-9]+$/);
-    const taskUrl = dh.url();
-    const taskId = taskUrl.split("/").pop()!;
+    await expect(dh).toHaveURL(/\/d\/cs\/f\/task\/(?!new$)[a-z0-9]+$/);
+    const recordId = dh.url().split("/").pop()!;
+    // a record starts as a draft its creator can still fix; assigning it is what tells the
+    // assignee about it
+    await expect(dh.getByTestId("state-badge")).toHaveText("Draft");
+    await dh.getByRole("button", { name: "assign" }).click();
     await expect(dh.getByTestId("state-badge")).toHaveText("Assigned");
     await expect(dh.getByTestId("due-badge")).toBeVisible();
 
     // the instructor finds it in My work and in the inbox, and acknowledges it
     const instructor = await pageAs("instructor1.cs");
     await instructor.goto("/d/cs/my-work");
-    await expect(instructor.getByTestId(`task-${taskId}`)).toContainText(title);
-    // the "all" view keeps the row visible after acknowledging (the ack filter drops it)
+    await expect(instructor.getByTestId(`task-${recordId}`)).toContainText(title);
     await instructor.goto("/d/cs/inbox");
-    const item = instructor.getByTestId("notification-task").filter({ hasText: title });
+    const item = instructor.getByTestId("notification-feature_record").filter({ hasText: title });
     await item.getByRole("button", { name: "Acknowledge" }).click();
     await expect(item.getByText("acknowledged")).toBeVisible();
 
@@ -42,7 +52,7 @@ test.describe("task skeleton", () => {
     await expect
       .poll(
         async () => {
-          await instructor.goto(`/d/cs/tasks/${taskId}`);
+          await instructor.goto(`/d/cs/tasks/${recordId}`);
           return instructor.getByTestId("state-badge").textContent();
         },
         { timeout: 90_000, intervals: [3_000] },
@@ -66,7 +76,7 @@ test.describe("task skeleton", () => {
     await expect(instructor.getByTestId("state-badge")).toHaveText("Submitted");
 
     // the head reviews and approves
-    await dh.goto(`/d/cs/tasks/${taskId}`);
+    await dh.goto(`/d/cs/tasks/${recordId}`);
     await dh.getByRole("button", { name: "review" }).click();
     await expect(dh.getByTestId("state-badge")).toHaveText("Under review");
     await dh.getByRole("button", { name: "approve" }).click();
@@ -82,11 +92,11 @@ test.describe("task skeleton", () => {
     await expect(dh.getByTestId("acknowledgements")).toContainText("Instructor One");
     await expect(dh.getByTestId("acknowledgements")).toContainText("acknowledged");
 
-    // the completed task leaves the open lists
+    // the completed task leaves the open lists and shows up under "Done"
     await instructor.goto("/d/cs/my-work");
-    await expect(instructor.getByTestId(`task-${taskId}`)).toHaveCount(0);
-    await dh.goto("/d/cs/tasks?filter=done");
-    await expect(dh.getByTestId(`task-${taskId}`)).toBeVisible();
+    await expect(instructor.getByTestId(`task-${recordId}`)).toHaveCount(0);
+    await dh.goto("/d/cs/tasks?view=done");
+    await expect(dh.getByTestId(`record-${recordId}`)).toBeVisible();
   });
 
   test("the seeded department-wide task reaches every instructor's my-work", async ({ pageAs }) => {

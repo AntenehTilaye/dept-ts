@@ -78,6 +78,11 @@ describe("recurrence.spawn", () => {
     });
     expect(spawned.dueAt?.getTime()).toBe(due.getTime());
     expect(spawned.assignments.map((a) => a.assigneeId)).toEqual([assigneePersonId]);
+    // the occurrence is a task like any other: a record of the `task` feature, already assigned
+    const record = await migratorDb.featureRecord.findUniqueOrThrow({
+      where: { id: spawned.featureRecordId! },
+    });
+    expect(record.currentStateKey).toBe("assigned");
 
     const advanced = await migratorDb.recurrenceRule.findUniqueOrThrow({ where: { id: rule.id } });
     expect(advanced.spawnedCount).toBe(1);

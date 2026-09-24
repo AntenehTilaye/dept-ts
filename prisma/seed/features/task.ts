@@ -68,6 +68,12 @@ export const task: FeatureDefinitionInput = {
       { key: "description", type: "long_text", label: "What has to be done" },
       { key: "assignee", type: "person_picker", label: "Assigned to", sourceBinding: "staff_in_department" },
       {
+        key: "assignee_group",
+        type: "group_picker",
+        label: "Or a group",
+        helpText: "Everybody in the group is assigned; membership is read when the task is created.",
+      },
+      {
         key: "audience",
         type: "multi_choice",
         label: "Or a whole audience",
@@ -144,6 +150,7 @@ export const task: FeatureDefinitionInput = {
       label: "Assigned",
       stepType: "wait",
       assignee: { type: "record_field", fieldKey: "assignee" },
+      deadline: { rule: "relative", offsetDays: 0, from: "record_field", fieldKey: "due_at" },
       notifications: {
         onEnter: [
           {
@@ -232,6 +239,7 @@ export const task: FeatureDefinitionInput = {
       key: "revision_required",
       label: "Revision required",
       assignee: { type: "record_field", fieldKey: "assignee" },
+      deadline: { rule: "relative", offsetDays: 0, from: "record_field", fieldKey: "due_at" },
       notifications: {
         onEnter: [{ templateKey: "task_revision_required", to: "assignee", category: "workflow" }],
       },
@@ -284,6 +292,18 @@ export const task: FeatureDefinitionInput = {
         { field: "deadline", label: "Due" },
       ],
       where: { states: ["assigned", "in_progress", "submitted", "under_review", "revision_required"] },
+    },
+    {
+      key: "done",
+      label: "Done",
+      columns: [
+        { field: "number", label: "Number" },
+        { field: "title", label: "Task" },
+        { field: "state", label: "State" },
+        { field: "assignee", label: "Assignee" },
+        { field: "deadline", label: "Due" },
+      ],
+      where: { states: ["completed", "cancelled"] },
     },
   ],
   dashboardCounters: [
