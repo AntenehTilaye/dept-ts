@@ -57,7 +57,7 @@ export default async function FeatureListPage(props: PageProps<"/d/[dept]/f/[fea
   }
 
   const { resolved, view, rows } = model;
-  const canCreate = (await canDo(ctx, `feature.${featureKey}.create`)).allowed;
+  const canCreate = (await canDo(ctx, `feature.${featureKey}.create`, undefined, "submit")).allowed;
   const counters = (await featureCounters(db, ctx.departmentId, actorOf(ctx), dept)).filter(
     (c) => c.featureKey === featureKey,
   );

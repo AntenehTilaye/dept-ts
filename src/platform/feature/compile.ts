@@ -448,7 +448,7 @@ export function compilePermissions(
   for (const [roleKey, level] of Object.entries(def.permissions.defaults)) {
     if (!level || level === "none") continue;
     for (const permissionKey of permissionKeys)
-      rolePermissions.push({ roleKey, permissionKey, level });
+      rolePermissions.push({ roleKey, permissionKey, level: levelFor(permissionKey, level) });
   }
 
   const grantRequirements: GrantRequirement[] = [];
@@ -481,6 +481,17 @@ export function compilePermissions(
   }
 
   return { permissionKeys, rolePermissions, grantRequirements };
+}
+
+const RELATIONAL = new Set(["own", "assigned", "participate", "limited", "review"]);
+
+/**
+ * Creating a record has no subject yet, so a relationship level ("may act on their own records")
+ * cannot be evaluated for it. It becomes `submit`, the unconditional level that means exactly
+ * "may create and edit their own"; every other key keeps the level the definition declared.
+ */
+function levelFor(permissionKey: string, level: string): string {
+  return permissionKey.endsWith(".create") && RELATIONAL.has(level) ? "submit" : level;
 }
 
 /** 11. the report definition, when the feature declares one. */

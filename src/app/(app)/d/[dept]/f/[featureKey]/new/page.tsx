@@ -21,7 +21,7 @@ export default async function NewRecordPage(props: PageProps<"/d/[dept]/f/[featu
     if (error instanceof FeatureNotFoundError) notFound();
     throw error;
   }
-  await requireCan(ctx, `feature.${featureKey}.create`, undefined, "act");
+  await requireCan(ctx, `feature.${featureKey}.create`, undefined, "submit");
 
   const preset = Array.isArray(search.preset) ? search.preset[0] : search.preset;
   const parentType = Array.isArray(search.parentType) ? search.parentType[0] : search.parentType;
