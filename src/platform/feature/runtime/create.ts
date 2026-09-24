@@ -159,13 +159,21 @@ async function createBacking(
   if (backing.kind === "feature_record") return;
 
   if (backing.kind === "task") {
+    const header = taskHeader(record);
     const task = await createTask(tx, actor, {
       title: record.title,
-      kind: backing.taskKind as never,
+      description: header.description,
+      kind: (header.kind ?? backing.taskKind) as never,
+      ...(header.priority ? { priority: header.priority as never } : {}),
       context: record.parentSubjectType
         ? { subjectType: record.parentSubjectType, subjectId: record.parentSubjectId! }
         : null,
+      dueAt: header.dueAt,
+      assignees: header.assignees,
+      expectedDeliverables: header.deliverables,
       keepDraft: true,
+      // the record owns the lifecycle: one workflow instance, on the record
+      skipWorkflow: true,
     });
     await tx.task.update({ where: { id: task.id }, data: { featureRecordId: record.id } });
     await tx.featureRecord.update({ where: { id: record.id }, data: { taskId: task.id } });
@@ -197,6 +205,52 @@ async function createBacking(
       where: { id: record.id },
       data: { data: toJson({ ...((record.data as Record<string, unknown>) ?? {}), ...ids }) },
     });
+}
+
+/**
+ * A task-backed record's header answers ARE the Task's own columns: who it is for, when it is
+ * due, how urgent it is and what has to be handed in. A definition that wants those columns
+ * filled names its fields with these keys; one that does not simply leaves them out.
+ */
+function taskHeader(record: RecordRow): {
+  description: string | null;
+  kind?: string;
+  priority?: string;
+  dueAt: Date | null;
+  assignees: { type: "person" | "group" | "audience"; id?: string; audienceSpec?: { roles: string[] } }[];
+  deliverables: { key: string; label: string; required: boolean }[];
+} {
+  const data = (record.data as Record<string, unknown>) ?? {};
+  const text = (key: string): string | undefined => {
+    const value = data[key];
+    return typeof value === "string" && value.trim() ? value.trim() : undefined;
+  };
+
+  const assignees: { type: "person" | "group" | "audience"; id?: string; audienceSpec?: { roles: string[] } }[] = [];
+  const assignee = text("assignee");
+  if (assignee) assignees.push({ type: "person", id: assignee });
+  const roles = Array.isArray(data.audience) ? data.audience.map(String).filter(Boolean) : [];
+  if (roles.length) assignees.push({ type: "audience", audienceSpec: { roles } });
+
+  const rows = Array.isArray(data.deliverables) ? data.deliverables : [];
+  const deliverables = rows
+    .map((row) => (row && typeof row === "object" ? (row as Record<string, unknown>) : {}))
+    .map((row) => ({
+      key: String(row.key ?? "").trim(),
+      label: String(row.label ?? "").trim(),
+      required: row.required === true || row.required === "true",
+    }))
+    .filter((slot) => slot.key && slot.label);
+
+  const due = text("due_at");
+  return {
+    description: text("description") ?? null,
+    kind: text("kind"),
+    priority: text("priority"),
+    dueAt: due ? new Date(due) : null,
+    assignees,
+    deliverables,
+  };
 }
 
 /**

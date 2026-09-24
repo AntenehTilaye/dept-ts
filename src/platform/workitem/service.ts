@@ -39,12 +39,35 @@ export interface CreateTaskInput {
   recurrence?: RecurrenceSpec | null;
   /** Skip the assign transition (drafts created by a wizard). */
   keepDraft?: boolean;
+  /**
+   * The caller owns the lifecycle: the feature runtime starts the workflow on the FeatureRecord
+   * the task belongs to, so the task must not start a second one of its own.
+   */
+  skipWorkflow?: boolean;
 }
 
 export const DEFAULT_TASK_REMINDER_SCHEDULE = "default_7_3_1_0_overdue";
 
-/** The task's workflow instance (the single owner of its lifecycle state). */
+/**
+ * The task's workflow instance (the single owner of its lifecycle state).
+ *
+ * A task the feature runtime created IS a FeatureRecord, and the record is the workflow's
+ * subject — so the lookup follows that link first and falls back to the provisional `task`
+ * instance of a row created before the feature builder existed.
+ */
 export async function taskInstance(db: Db, taskId: string) {
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    select: { featureRecordId: true },
+  });
+  if (task?.featureRecordId) {
+    const record = await db.featureRecord.findUnique({
+      where: { id: task.featureRecordId },
+      select: { workflowInstanceId: true },
+    });
+    if (record)
+      return db.workflowInstance.findUnique({ where: { id: record.workflowInstanceId } });
+  }
   return instanceOf(db, { subjectType: "task", subjectId: taskId }, TASK_DEFINITION_KEY);
 }
 
@@ -108,13 +131,14 @@ export async function createTask(db: Db, actor: Actor, input: CreateTaskInput) {
     });
 
   const subject = { subjectType: "task", subjectId: task.id };
-  await start(db, {
-    definitionKey: TASK_DEFINITION_KEY,
-    subject,
-    departmentId: actor.departmentId,
-    actor,
-    dueAt: input.dueAt ?? null,
-  });
+  if (!input.skipWorkflow)
+    await start(db, {
+      definitionKey: TASK_DEFINITION_KEY,
+      subject,
+      departmentId: actor.departmentId,
+      actor,
+      dueAt: input.dueAt ?? null,
+    });
   const assignments = input.assignees?.length
     ? await addAssignees(db, actor.departmentId, task.id, input.assignees, task.title)
     : [];
@@ -127,7 +151,7 @@ export async function createTask(db: Db, actor: Actor, input: CreateTaskInput) {
     { departmentId: actor.departmentId },
   );
 
-  if (assignments.length && !input.keepDraft) {
+  if (assignments.length && !input.keepDraft && !input.skipWorkflow) {
     await transition(db, actor, task.id, "assign");
     if (task.dueAt && task.reminderScheduleKey)
       await subscribeTaskReminders(

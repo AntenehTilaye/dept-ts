@@ -8,7 +8,7 @@ import { notify } from "../../scheduler/notify";
 import { cancelBySubject, subscribeReminders } from "../../scheduler/reminders";
 import { enqueue } from "../../scheduler/enqueue";
 import { createTask } from "../../workitem/service";
-import { addAssignees } from "../../workitem/assignments";
+import { addAssignees, assigneePersonIds } from "../../workitem/assignments";
 import { runAdapter, getAdapter } from "../adapters/registry";
 import { audienceArgs, type AutoTrigger } from "../compile";
 import { branchesOf, type DeadlineRule, type StepDef } from "../schema";
@@ -319,6 +319,8 @@ async function backWithTask(
     dueAt: deadline,
     expectedDeliverables: template.expectedDeliverables,
     reminderScheduleKey: template.reminderScheduleKey ?? null,
+    // the step of a record owns this task; its lifecycle is the record's
+    skipWorkflow: true,
   });
   await ctx.tx.task.update({ where: { id: task.id }, data: { featureStepInstanceId: stepInstanceId } });
   await ctx.tx.featureStepInstance.update({ where: { id: stepInstanceId }, data: { taskId: task.id } });
@@ -413,11 +415,19 @@ async function notifyStep(
   stepInstanceId: string,
   assignee: Assignee | null,
 ): Promise<void> {
+  // a task-backed record's step is worked on by whoever the Task is assigned to — which may be a
+  // whole audience snapshotted at creation, not the single person a step assignee rule resolves
+  const taskAssignees = ctx.record.taskId ? await assigneePersonIds(ctx.tx, ctx.record.taskId) : [];
+
   for (const rule of step.notifications[phase]) {
     const args = audienceArgs(rule.to);
     const recipients =
-      args.recipientRule === "feature_assignee" && assignee?.type === "person"
-        ? [assignee.id]
+      args.recipientRule === "feature_assignee"
+        ? taskAssignees.length
+          ? taskAssignees
+          : assignee?.type === "person"
+            ? [assignee.id]
+            : undefined
         : args.recipientRule === "feature_owner"
           ? [ctx.record.ownerPersonId]
           : args.recipientRule === "feature_creator"
