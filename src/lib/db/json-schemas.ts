@@ -91,4 +91,23 @@ export const jsonSchemas: Record<string, ZodType> = {
   "FeatureMigration.stepMap": z.record(z.string(), z.string()),
   "FeatureMigration.plan": z.record(z.string(), z.unknown()),
   "FeatureMigration.blockedIds": z.array(z.string()).nullable(),
+  // Availability: a window is a weekday plus two "HH:MM" times, and a blackout is an interval
+  // with a reason (src/platform/availability/schema.ts holds the parsed shapes).
+  "AvailabilityPolicy.weeklyWindowsJson": z.array(
+    z.object({
+      weekday: z.number().int().min(1).max(7),
+      from: z.string().regex(/^\d{2}:\d{2}$/),
+      to: z.string().regex(/^\d{2}:\d{2}$/),
+    }),
+  ),
+  "AvailabilityPolicy.breakWindowsJson": z.array(
+    z.object({
+      weekday: z.number().int().min(1).max(7).optional(),
+      from: z.string().regex(/^\d{2}:\d{2}$/),
+      to: z.string().regex(/^\d{2}:\d{2}$/),
+    }),
+  ),
+  "AvailabilityPolicy.blackoutPeriodsJson": z.array(
+    z.object({ fromAt: z.string(), toAt: z.string(), reason: z.string().optional() }),
+  ),
 };

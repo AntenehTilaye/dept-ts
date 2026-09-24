@@ -1,8 +1,12 @@
 import { z } from "zod";
+import { instantOf, partsIn, type Parts } from "../../lib/time";
 
 // Recurrence arithmetic for repeating tasks. Pure and timezone-aware: occurrences land on the
 // same wall-clock time in the rule's timezone (Africa/Addis_Ababa by default), so a daily task
-// stays at 09:00 local across DST-free and DST-observing zones alike.
+// stays at 09:00 local across DST-free and DST-observing zones alike. The wall-clock
+// conversions themselves live in src/lib/time.ts, which the availability ledger shares.
+
+export { instantOf, partsIn } from "../../lib/time";
 
 export const Frequency = z.enum(["daily", "weekly", "monthly", "termly", "yearly"]);
 export type Frequency = z.infer<typeof Frequency>;
@@ -24,77 +28,6 @@ export type RecurrenceSpec = z.infer<typeof RecurrenceSpec>;
 
 /** Months a termly rule steps by. */
 const TERMLY_MONTHS = 4;
-
-interface Parts {
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  minute: number;
-  second: number;
-  weekday: number;
-}
-
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-/** The wall-clock parts of an instant in a timezone. */
-export function partsIn(date: Date, timeZone: string): Parts {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour12: false,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    weekday: "short",
-  });
-  const got: Record<string, string> = {};
-  for (const p of fmt.formatToParts(date)) got[p.type] = p.value;
-  return {
-    year: Number(got.year),
-    month: Number(got.month),
-    day: Number(got.day),
-    hour: Number(got.hour === "24" ? "0" : got.hour),
-    minute: Number(got.minute),
-    second: Number(got.second),
-    weekday: Math.max(0, WEEKDAYS.indexOf(got.weekday ?? "Sun")),
-  };
-}
-
-/** The offset of a timezone at an instant, in minutes east of UTC. */
-function offsetMinutes(date: Date, timeZone: string): number {
-  const p = partsIn(date, timeZone);
-  const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
-  return Math.round((asUtc - date.getTime()) / 60_000);
-}
-
-/** The instant at which a timezone's wall clock shows the given parts. */
-export function instantOf(
-  parts: {
-    year: number;
-    month: number;
-    day: number;
-    hour: number;
-    minute: number;
-    second?: number;
-  },
-  timeZone: string,
-): Date {
-  const naive = Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second ?? 0,
-  );
-  // two passes converge for every real zone (the first offset may belong to the wrong side of a shift)
-  let guess = new Date(naive - offsetMinutes(new Date(naive), timeZone) * 60_000);
-  guess = new Date(naive - offsetMinutes(guess, timeZone) * 60_000);
-  return guess;
-}
 
 function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();

@@ -19,6 +19,7 @@ import { installWorkItemHooks, registerWorkItemSubjects } from "@/platform/worki
 import { installBindings, registerFormSubjects } from "@/platform/forms";
 import { installCampaignSubscribers, registerCampaignSubjects } from "@/platform/campaign";
 import { installFeatureRuntime, registerFeatureSubjects } from "@/platform/feature";
+import { installAvailabilityFeeds, registerAvailabilitySubjects } from "@/platform/availability";
 import { registerModules } from "@/modules";
 
 // Process-wide registrations, loaded once by src/instrumentation.ts (web) and the worker entry
@@ -38,6 +39,7 @@ export function bootstrap(): void {
   registerFormSubjects();
   registerCampaignSubjects();
   registerFeatureSubjects();
+  registerAvailabilitySubjects();
   setSubjectResolver(resolverWith((departmentId) => getDb(departmentId) as unknown as Db));
   setEnginePolicyStore(dbPolicyStore);
   installGrantSubscribers();
@@ -48,6 +50,7 @@ export function bootstrap(): void {
   installBindings();
   installCampaignSubscribers();
   installFeatureRuntime();
+  installAvailabilityFeeds();
   registerModules();
   registerDocumentRetention();
   setPeriodDependentsResolver(async (db, periodId) =>

@@ -13,6 +13,14 @@
       "table": "answer"
     },
     {
+      "model": "AvailabilityBlock",
+      "table": "availability_block"
+    },
+    {
+      "model": "AvailabilityPolicy",
+      "table": "availability_policy"
+    },
+    {
       "model": "CalendarPeriod",
       "table": "calendar_period"
     },
@@ -297,5 +305,5 @@
       "table": "verification"
     }
   ],
-  "hash": "d658afd24834992c8c490bafc0fe86c2830ab32ee34aa82145776e93c5ccbd08"
+  "hash": "cc80c004c2e0a2f5efd4093b69a92442a3f7d4d99dab056ad175ff0fbb7fe38a"
 }

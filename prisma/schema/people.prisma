@@ -31,6 +31,7 @@ model Person {
   submissions          Submission[]
   campaignInvitations  CampaignInvitation[]
   featureRecords       FeatureRecord[]      @relation("RecordOwner")
+  availabilityPolicies AvailabilityPolicy[] @relation("PolicyOwner")
 
   @@index([email])
   @@index([fullName])

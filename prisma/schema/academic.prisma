@@ -37,10 +37,11 @@ model Term {
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
-  periods        CalendarPeriod[]
-  offerings      CourseOffering[]
-  timetableSlots ClassTimetableSlot[]
-  campaigns      Campaign[]
+  periods            CalendarPeriod[]
+  offerings          CourseOffering[]
+  timetableSlots     ClassTimetableSlot[]
+  campaigns          Campaign[]
+  availabilityBlocks AvailabilityBlock[]
 
   @@unique([academicYearId, ordinal])
   @@index([departmentId, status])
