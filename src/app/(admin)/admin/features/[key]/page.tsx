@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Route } from "next";
 import { LockIcon } from "lucide-react";
 import { adminPageContext } from "@/lib/auth/page";
 import { withTenantBypass } from "@/lib/db/tenant";
@@ -17,6 +19,7 @@ import { SimulatePanel } from "@/components/admin/feature-builder/SimulatePanel"
 import { ActionForm } from "@/components/forms/ActionForm";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { publishVersionForm } from "../actions";
 
@@ -72,6 +75,11 @@ export default async function FeaturePage(props: PageProps<"/admin/features/[key
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/admin/features/${definition.key}/migrate` as Route}>
+                Migrate records
+              </Link>
+            </Button>
             {versions.slice(0, 4).map((v) => (
               <Badge key={v.id} variant={v.id === definition.activeVersionId ? "default" : "secondary"}>
                 v{v.version} {v.status}
