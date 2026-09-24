@@ -156,7 +156,17 @@ export async function enterParallel(ctx: StepContext, groupKey: string): Promise
   const group = parallel.group;
 
   if (group.branches.mode === "dynamic") {
-    const persons = await dynamicBranchPersons(ctx, group.branches.perPerson);
+    // the engine already instantiated one branch state per person when it entered the compound
+    // state; following it keeps the instance and the step rows describing the same branches
+    const instance = await ctx.tx.workflowInstance.findUnique({
+      where: { id: ctx.record.workflowInstanceId },
+    });
+    const fromInstance = Object.keys(
+      (instance?.branchStates as Record<string, unknown> | null) ?? {},
+    );
+    const persons = fromInstance.length
+      ? fromInstance
+      : await resolveDynamicPersons(ctx, group.branches.perPerson);
     const first = branchLeaves(ctx.resolved.tree, group.key, "$person")[0];
     for (const personId of persons)
       if (first)
@@ -436,7 +446,8 @@ async function notifyStep(
   }
 }
 
-async function dynamicBranchPersons(
+/** The people a dynamic parallel group opens a branch for. */
+export async function resolveDynamicPersons(
   ctx: StepContext,
   rule: Parameters<typeof resolveAssignee>[0],
 ): Promise<string[]> {

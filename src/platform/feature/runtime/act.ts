@@ -2,7 +2,7 @@ import type { Db } from "../../../lib/db/types";
 import type { Actor } from "../../identity/can";
 import { saveDraft, submit, type AnswerMap } from "../../forms/submissions";
 import { applyIn, availableActions as workflowActions, type ApplyResult } from "../../workflow/engine";
-import { contextOfRecord, type StepContext } from "./steps";
+import { contextOfRecord, resolveDynamicPersons, type StepContext } from "./steps";
 
 // The single path into a feature's lifecycle. Everything a page or a job wants to do to a record
 // goes through `act`: it stores the step's answers, then asks the workflow engine to apply the
@@ -40,13 +40,32 @@ export async function act(
   if (input.answers && Object.keys(input.answers).length)
     await saveAnswers(ctx, stepKey, input.branchKey ?? null, input.answers, true);
 
+  // a dynamic group's branches only exist once its people are known, and the engine instantiates
+  // them as it enters the compound state — so they are resolved here, before the transition
+  const personIds = await dynamicPersonsFor(ctx, `${stepKey}.${actionKey}`);
+
   return applyIn(tx, ctx.record.workflowInstanceId, `${stepKey}.${actionKey}`, actor, {
+    ...(personIds ? { personIds } : {}),
     comment: input.comment,
     // the header answers count as answers: an action may require a field the record already has
     fields: { ...((ctx.record.data as Record<string, unknown>) ?? {}), ...(input.answers ?? {}) },
     branchKey: input.branchKey ?? undefined,
     attachments: input.attachments,
   });
+}
+
+async function dynamicPersonsFor(
+  ctx: StepContext,
+  transitionKey: string,
+): Promise<string[] | null> {
+  const transition = ctx.resolved.compiled.workflow.transitions.find((t) => t.key === transitionKey);
+  const target = transition
+    ? ctx.resolved.compiled.workflow.states.find((s) => s.key === transition.to)
+    : undefined;
+  if (!target?.compound?.dynamic) return null;
+  const group = ctx.resolved.tree.parallels.find((p) => p.group.key === target.key)?.group;
+  if (!group || group.branches.mode !== "dynamic") return null;
+  return resolveDynamicPersons(ctx, group.branches.perPerson);
 }
 
 /** Saves the step's answers without moving the record. */

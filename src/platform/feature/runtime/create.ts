@@ -170,6 +170,8 @@ async function createBacking(
     await tx.task.update({ where: { id: task.id }, data: { featureRecordId: record.id } });
     await tx.featureRecord.update({ where: { id: record.id }, data: { taskId: task.id } });
     record.taskId = task.id;
+    if (backing.extension === "case") await createCaseExtension(tx, record, task.id);
+    // `planned_activity` gets its extension row with the annual-plan phase, which owns the table
     return;
   }
 
@@ -195,6 +197,30 @@ async function createBacking(
       where: { id: record.id },
       data: { data: toJson({ ...((record.data as Record<string, unknown>) ?? {}), ...ids }) },
     });
+}
+
+/**
+ * The Case extension of a task-backed feature. It reads the record's own answers, so a
+ * definition that renames its fields only has to keep these three keys.
+ */
+async function createCaseExtension(tx: Db, record: RecordRow, taskId: string): Promise<void> {
+  const data = (record.data as Record<string, unknown>) ?? {};
+  const text = (key: string): string | null => {
+    const value = data[key];
+    return typeof value === "string" && value.trim() ? value.trim() : null;
+  };
+  await tx.case.create({
+    data: {
+      taskId,
+      departmentId: record.departmentId,
+      requesterPersonId: record.createdByPersonId,
+      ...(record.parentSubjectType && record.parentSubjectId
+        ? { originType: record.parentSubjectType as never, originId: record.parentSubjectId }
+        : {}),
+      issue: text("details") ?? text("summary") ?? record.title,
+      issueCategory: text("category"),
+    },
+  });
 }
 
 /** `F-<prefix>-<year>-<seq>`, drawn atomically per department, definition and year. */
