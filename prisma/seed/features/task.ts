@@ -67,6 +67,34 @@ export const task: FeatureDefinitionInput = {
       { key: "title", type: "short_text", label: "Title", constraints: { required: true } },
       { key: "description", type: "long_text", label: "What has to be done" },
       { key: "assignee", type: "person_picker", label: "Assigned to", sourceBinding: "staff_in_department" },
+      {
+        key: "assignee_group",
+        type: "group_picker",
+        label: "Or a group",
+        helpText: "Everybody in the group is assigned; membership is read when the task is created.",
+      },
+      {
+        key: "audience",
+        type: "multi_choice",
+        label: "Or a whole audience",
+        helpText: "Everybody in the audience is assigned; the group is snapshotted when the task is created.",
+        options: [
+          { value: "instructor", label: "Every instructor" },
+          { value: "committee_chair", label: "Every committee chair" },
+          { value: "student_rep", label: "Every section representative" },
+        ],
+      },
+      {
+        key: "deliverables",
+        type: "repeating_group",
+        label: "Deliverables",
+        helpText: "A required slot must hold a file before the task can be submitted.",
+        fields: [
+          { key: "key", type: "short_text", label: "Key", constraints: { required: true } },
+          { key: "label", type: "short_text", label: "Label", constraints: { required: true } },
+          { key: "required", type: "boolean", label: "Required" },
+        ],
+      },
       { key: "kind", type: "short_text", label: "Kind", readOnly: true },
       {
         key: "priority",
@@ -122,6 +150,7 @@ export const task: FeatureDefinitionInput = {
       label: "Assigned",
       stepType: "wait",
       assignee: { type: "record_field", fieldKey: "assignee" },
+      deadline: { rule: "relative", offsetDays: 0, from: "record_field", fieldKey: "due_at" },
       notifications: {
         onEnter: [
           {
@@ -210,6 +239,7 @@ export const task: FeatureDefinitionInput = {
       key: "revision_required",
       label: "Revision required",
       assignee: { type: "record_field", fieldKey: "assignee" },
+      deadline: { rule: "relative", offsetDays: 0, from: "record_field", fieldKey: "due_at" },
       notifications: {
         onEnter: [{ templateKey: "task_revision_required", to: "assignee", category: "workflow" }],
       },
@@ -262,6 +292,18 @@ export const task: FeatureDefinitionInput = {
         { field: "deadline", label: "Due" },
       ],
       where: { states: ["assigned", "in_progress", "submitted", "under_review", "revision_required"] },
+    },
+    {
+      key: "done",
+      label: "Done",
+      columns: [
+        { field: "number", label: "Number" },
+        { field: "title", label: "Task" },
+        { field: "state", label: "State" },
+        { field: "assignee", label: "Assignee" },
+        { field: "deadline", label: "Due" },
+      ],
+      where: { states: ["completed", "cancelled"] },
     },
   ],
   dashboardCounters: [

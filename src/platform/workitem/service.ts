@@ -8,8 +8,8 @@ import { ackStatus } from "../scheduler/inbox";
 import { notify } from "../scheduler/notify";
 import { cancelBySubject, subscribeReminders } from "../scheduler/reminders";
 import { cancelByPrefix } from "../scheduler/ledger";
-import { applyIn, availableActions, instanceOf, start } from "../workflow/engine";
-import { TASK_DEFINITION_KEY } from "../workflow/definitions/task";
+import { applyIn, availableActions } from "../workflow/engine";
+import { moveDeadline } from "../feature/runtime/steps";
 import { addAssignees, assigneePersonIds, type AssigneeSpec } from "./assignments";
 import { nextOccurrence, RecurrenceSpec } from "./recurrence";
 
@@ -37,15 +37,36 @@ export interface CreateTaskInput {
   expectedDeliverables?: DeliverableSlot[];
   reminderScheduleKey?: string | null;
   recurrence?: RecurrenceSpec | null;
-  /** Skip the assign transition (drafts created by a wizard). */
-  keepDraft?: boolean;
+  /**
+   * What this task belongs to. Every task has one of the three (task_backing_check): the
+   * record it IS, the step that created it for its assignee, or the recurrence rule it is the
+   * template of — which `recurrence` sets by itself.
+   */
+  featureRecordId?: string | null;
+  featureStepInstanceId?: string | null;
 }
 
 export const DEFAULT_TASK_REMINDER_SCHEDULE = "default_7_3_1_0_overdue";
 
-/** The task's workflow instance (the single owner of its lifecycle state). */
+/**
+ * The task's workflow instance (the single owner of its lifecycle state).
+ *
+ * A task IS a FeatureRecord, and the record is the workflow's subject — so the lookup follows
+ * that link. A task a feature step spawned for its assignee has no lifecycle of its own: the
+ * record's step owns it, and this returns null.
+ */
 export async function taskInstance(db: Db, taskId: string) {
-  return instanceOf(db, { subjectType: "task", subjectId: taskId }, TASK_DEFINITION_KEY);
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    select: { featureRecordId: true },
+  });
+  if (!task?.featureRecordId) return null;
+  const record = await db.featureRecord.findUnique({
+    where: { id: task.featureRecordId },
+    select: { workflowInstanceId: true },
+  });
+  if (!record) return null;
+  return db.workflowInstance.findUnique({ where: { id: record.workflowInstanceId } });
 }
 
 export async function taskOf(db: Db, taskId: string) {
@@ -58,8 +79,9 @@ function slotsOf(task: { expectedDeliverablesJson: unknown }): DeliverableSlot[]
 }
 
 /**
- * Creates a task, starts its workflow, assigns it (notifying every assignee with an
- * ack-required notification) and subscribes the deadline reminders.
+ * Creates the Task row and its assignments. The lifecycle is NOT started here: a task is a
+ * record of the `task` feature (or the companion of a feature step), and the record owns the
+ * one workflow instance — `createTaskRecord` is how anything spawns a task with a lifecycle.
  */
 export async function createTask(db: Db, actor: Actor, input: CreateTaskInput) {
   const recurrenceRule = input.recurrence
@@ -94,6 +116,8 @@ export async function createTask(db: Db, actor: Actor, input: CreateTaskInput) {
       dueAt: input.dueAt ?? null,
       deadlineAnchorJson: input.deadlineAnchor ? toJson(input.deadlineAnchor) : undefined,
       expectedDeliverablesJson: toJson(input.expectedDeliverables ?? []),
+      featureRecordId: input.featureRecordId ?? null,
+      featureStepInstanceId: input.featureStepInstanceId ?? null,
       recurrenceRuleId: recurrenceRule?.id ?? null,
       reminderScheduleKey:
         input.reminderScheduleKey === undefined
@@ -108,16 +132,8 @@ export async function createTask(db: Db, actor: Actor, input: CreateTaskInput) {
     });
 
   const subject = { subjectType: "task", subjectId: task.id };
-  await start(db, {
-    definitionKey: TASK_DEFINITION_KEY,
-    subject,
-    departmentId: actor.departmentId,
-    actor,
-    dueAt: input.dueAt ?? null,
-  });
-  const assignments = input.assignees?.length
-    ? await addAssignees(db, actor.departmentId, task.id, input.assignees, task.title)
-    : [];
+  if (input.assignees?.length)
+    await addAssignees(db, actor.departmentId, task.id, input.assignees, task.title);
 
   await publish(
     db,
@@ -127,17 +143,6 @@ export async function createTask(db: Db, actor: Actor, input: CreateTaskInput) {
     { departmentId: actor.departmentId },
   );
 
-  if (assignments.length && !input.keepDraft) {
-    await transition(db, actor, task.id, "assign");
-    if (task.dueAt && task.reminderScheduleKey)
-      await subscribeTaskReminders(
-        db,
-        actor.departmentId,
-        task.id,
-        task.dueAt,
-        task.reminderScheduleKey,
-      );
-  }
   return (await taskOf(db, task.id))!;
 }
 
@@ -231,7 +236,11 @@ async function notifyAssignment(db: Db, actor: Actor, taskId: string) {
   });
 }
 
-/** Moves the deadline: cancels the old reminder keys and subscribes new ones. */
+/**
+ * Moves the deadline. A task's deadline lives on the record it is: the answer the definition's
+ * deadline rules read, the active steps' own deadlines and the reminders that follow them all
+ * move together, and the Task row keeps its copy for the lists.
+ */
 export async function setDeadline(
   db: Db,
   actor: Actor,
@@ -243,7 +252,8 @@ export async function setDeadline(
   const subject = { subjectType: "task", subjectId: taskId };
   await cancelBySubject(db, subject);
   await cancelByPrefix(db, `task:${taskId}:`);
-  if (dueAt && task.reminderScheduleKey)
+  if (task.featureRecordId) await moveDeadline(db, task.featureRecordId, dueAt);
+  else if (dueAt && task.reminderScheduleKey)
     await subscribeTaskReminders(db, actor.departmentId, taskId, dueAt, task.reminderScheduleKey);
   const instance = await taskInstance(db, taskId);
   if (instance) await db.workflowInstance.update({ where: { id: instance.id }, data: { dueAt } });
@@ -258,8 +268,20 @@ export async function setDeadline(
   );
 }
 
-/** Who acknowledged or declined the assignment. */
+/**
+ * Who acknowledged or declined the assignment. The notification is addressed to the record the
+ * task is — that is what the assignee saw in their inbox — so the status is read there, and on
+ * the task itself for a row that predates the feature kernel.
+ */
 export async function acknowledgements(db: Db, taskId: string) {
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    select: { featureRecordId: true },
+  });
+  const onRecord = task?.featureRecordId
+    ? await ackStatus(db, { subjectType: "feature_record", subjectId: task.featureRecordId })
+    : null;
+  if (onRecord?.total) return onRecord;
   return ackStatus(db, { subjectType: "task", subjectId: taskId });
 }
 

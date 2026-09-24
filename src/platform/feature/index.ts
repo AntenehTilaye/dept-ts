@@ -13,6 +13,7 @@ export type { Adapter, AdapterContext, GuardAdapter } from "./adapters/registry"
 export { registerBuiltinAdapters, BUILTIN_GUARDS } from "./adapters/builtin";
 export { seedFeature, seedFeatures, pendingSystemUpgrade, mergeLocked } from "./seed";
 export * from "./runtime/create";
+export { createTaskRecord, type SpawnedTask } from "./runtime/task-record";
 export * from "./runtime/act";
 export * from "./runtime/queries";
 export { installFeatureRuntime } from "./runtime/effects";
@@ -26,4 +27,5 @@ export {
   rejectBranch,
   setTerminal,
   contextOfRecord,
+  moveDeadline,
 } from "./runtime/steps";

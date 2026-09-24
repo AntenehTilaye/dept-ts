@@ -74,11 +74,21 @@ export async function seedFeature(
   const active = existing.activeVersionId
     ? await tx.featureDefinitionVersion.findUnique({ where: { id: existing.activeVersionId } })
     : null;
-  if (active?.lockedHash === codeLockedHash) return { key: def.key, action: "unchanged" };
+  // nobody has edited this definition yet: every version it has came from a seed and its
+  // document still hashes to what the seed wrote, so a release may improve it wholesale — a
+  // renamed label or a new field reaches the installation instead of waiting for somebody to
+  // notice. A document that no longer matches its own hash was edited, so it is protected.
+  const untouched =
+    !!active &&
+    (active.changeNote ?? "").startsWith("seed") &&
+    jsonHash(active.json) === active.jsonHash;
+  const codeJsonHash = jsonHash(def);
+  if (active?.lockedHash === codeLockedHash && (!untouched || active.jsonHash === codeJsonHash))
+    return { key: def.key, action: "unchanged" };
 
   // the code moved: keep the administrator's document, take the locked subtree from the code
-  const base = active?.json ?? def;
-  const merged = mergeLocked(base, def, allLocks(def, true));
+  const base = untouched ? def : (active?.json ?? def);
+  const merged = untouched ? def : mergeLocked(base, def, allLocks(def, true));
   const latest = await tx.featureDefinitionVersion.findFirst({
     where: { definitionId: existing.id },
     orderBy: { version: "desc" },
@@ -91,12 +101,13 @@ export async function seedFeature(
       json: toJson(merged),
       jsonHash: jsonHash(merged),
       lockedHash: codeLockedHash,
-      changeNote: `seed-upgrade:${codeLockedHash}`,
+      changeNote: untouched ? `seed:${codeLockedHash}` : `seed-upgrade:${codeLockedHash}`,
       createdBy: SEED_USER,
     },
   });
 
-  const autoPublish = opts.autoPublish ?? env().SEED_AUTO_PUBLISH === "1";
+  // an untouched definition has nobody's work to protect, so the new version goes live at once
+  const autoPublish = untouched || (opts.autoPublish ?? env().SEED_AUTO_PUBLISH === "1");
   if (!autoPublish) return { key: def.key, action: "upgraded", versionId: draft.id };
   await publishVersionOn(tx, existing.id, draft.id, { userId: SEED_USER, isAdmin: true });
   return { key: def.key, action: "published_upgrade", versionId: draft.id };

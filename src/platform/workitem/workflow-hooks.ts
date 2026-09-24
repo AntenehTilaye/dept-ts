@@ -13,10 +13,14 @@ import {
   type EffectContext,
 } from "../workflow/effects";
 import { registerGuard } from "../workflow/guards";
-import { instanceOf } from "../workflow/engine";
-import { TASK_DEFINITION_KEY } from "../workflow/definitions/task";
+import { createTaskRecord } from "../feature/runtime/task-record";
 import { assigneePersonIds } from "./assignments";
-import { createTask, deliverableStatus, transition, type CreateTaskInput } from "./service";
+import {
+  deliverableStatus,
+  taskInstance,
+  transition,
+  type CreateTaskInput,
+} from "./service";
 import { listTasks } from "./queries";
 
 // Everything the work item contributes to the kernel: the deliverable guard, the real
@@ -24,6 +28,24 @@ import { listTasks } from "./queries";
 // acknowledgement into a start (and a decline into a comment) and the overdue sweep provider.
 
 const state = globalSingleton("workitem-hooks", () => ({ installed: false }));
+
+/**
+ * The Task an event is about: a `task` aggregate is one directly, a `feature_record` aggregate is
+ * one when the feature it belongs to is task-backed.
+ */
+async function taskIdOfAggregate(
+  tx: Db,
+  aggregateType: string,
+  aggregateId: string,
+): Promise<string | null> {
+  if (aggregateType === "task") return aggregateId;
+  if (aggregateType !== "feature_record") return null;
+  const record = await tx.featureRecord.findUnique({
+    where: { id: aggregateId },
+    select: { taskId: true },
+  });
+  return record?.taskId ?? null;
+}
 
 function argString(args: Record<string, unknown>, key: string): string | undefined {
   const v = args[key];
@@ -36,7 +58,9 @@ export function installWorkItemHooks(): void {
 
   // --- guard -------------------------------------------------------------------------
   registerGuard("task.requiredDeliverablesLinked", async (ctx) => {
-    const slots = await deliverableStatus(ctx.tx, ctx.instance.subjectId);
+    const taskId = await taskIdOfAggregate(ctx.tx, ctx.instance.subjectType, ctx.instance.subjectId);
+    if (!taskId) return true;
+    const slots = await deliverableStatus(ctx.tx, taskId);
     const missing = slots.filter((s) => s.required && !s.satisfied).map((s) => s.label || s.key);
     return missing.length
       ? { ok: false as const, reason: `Missing required deliverable(s): ${missing.join(", ")}` }
@@ -44,13 +68,15 @@ export function installWorkItemHooks(): void {
   });
 
   // --- notify recipient rules --------------------------------------------------------
-  registerRecipientRule("task_assignees", async (ctx) =>
-    ctx.instance.subjectType === "task" ? assigneePersonIds(ctx.tx, ctx.instance.subjectId) : [],
-  );
+  registerRecipientRule("task_assignees", async (ctx) => {
+    const taskId = await taskIdOfAggregate(ctx.tx, ctx.instance.subjectType, ctx.instance.subjectId);
+    return taskId ? assigneePersonIds(ctx.tx, taskId) : [];
+  });
   registerRecipientRule("task_creator", async (ctx) => {
-    if (ctx.instance.subjectType !== "task") return [];
+    const taskId = await taskIdOfAggregate(ctx.tx, ctx.instance.subjectType, ctx.instance.subjectId);
+    if (!taskId) return [];
     const task = await ctx.tx.task.findUnique({
-      where: { id: ctx.instance.subjectId },
+      where: { id: taskId },
       select: { createdBy: true },
     });
     if (!task) return [];
@@ -87,7 +113,9 @@ export function installWorkItemHooks(): void {
         ? (args.expectedDeliverables as CreateTaskInput["expectedDeliverables"])
         : [],
     };
-    await createTask(ctx.tx, { ...actor, departmentId: ctx.instance.departmentId }, spec);
+    // follow-up work is a task like any other: a record of the `task` feature, with the one
+    // lifecycle every task has
+    await createTaskRecord(ctx.tx, ctx.instance.departmentId, actor, spec);
   });
 
   // the derived caches a task transition may write
@@ -101,14 +129,13 @@ export function installWorkItemHooks(): void {
   // --- subscribers -------------------------------------------------------------------
   // acknowledging the assignment starts the task
   subscribe("notification.acknowledged", "workitem.start_on_ack", async (e, tx) => {
-    if (e.aggregateType !== "task" || !e.departmentId) return;
+    if (!e.departmentId) return;
+    // the notification's subject is the task, or the feature record a task-backed feature IS
+    const taskId = await taskIdOfAggregate(tx, e.aggregateType, e.aggregateId);
+    if (!taskId) return;
     const p = e.payloadJson as { personId?: string } | null;
     if (!p?.personId) return;
-    const instance = await instanceOf(
-      tx,
-      { subjectType: "task", subjectId: e.aggregateId },
-      TASK_DEFINITION_KEY,
-    );
+    const instance = await taskInstance(tx, taskId);
     if (!instance || instance.currentState !== "assigned") return;
     // the acknowledging assignee is the actor, so the transition's actor rules apply normally
     const person = await tx.person.findUnique({
@@ -124,7 +151,7 @@ export function installWorkItemHooks(): void {
         departmentId: e.departmentId,
         isAdmin: false,
       },
-      e.aggregateId,
+      taskId,
       "start",
     );
   });
@@ -132,8 +159,10 @@ export function installWorkItemHooks(): void {
   // declining posts a comment on the task thread and tells the creator
   subscribe("notification.declined", "workitem.decline", async (e, tx) => {
     const p = e.payloadJson as { personId?: string; reason?: string } | null;
-    if (e.aggregateType !== "task" || !p?.personId || !e.departmentId) return;
-    const task = await tx.task.findUnique({ where: { id: e.aggregateId } });
+    if (!p?.personId || !e.departmentId) return;
+    const taskId = await taskIdOfAggregate(tx, e.aggregateType, e.aggregateId);
+    if (!taskId) return;
+    const task = await tx.task.findUnique({ where: { id: taskId } });
     if (!task) return;
     const person = await tx.person.findUnique({
       where: { id: p.personId },
@@ -142,7 +171,7 @@ export function installWorkItemHooks(): void {
     const thread = await getOrCreateThread(
       tx,
       e.departmentId,
-      { subjectType: "task", subjectId: e.aggregateId },
+      { subjectType: "task", subjectId: taskId },
       "comments",
       task.createdBy,
     );
@@ -163,8 +192,8 @@ export function installWorkItemHooks(): void {
         recipients: [creatorPerson.id],
         templateKey: "task_declined",
         category: "assignment",
-        subject: { subjectType: "task", subjectId: e.aggregateId },
-        dedupeKey: `task:${e.aggregateId}:declined:${p.personId}`,
+        subject: { subjectType: "task", subjectId: taskId },
+        dedupeKey: `task:${taskId}:declined:${p.personId}`,
         variables: {
           title: task.title,
           assignee_name: person?.fullName ?? "An assignee",

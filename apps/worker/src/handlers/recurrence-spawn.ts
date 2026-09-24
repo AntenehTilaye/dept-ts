@@ -3,7 +3,8 @@ import { withTenantTx } from "@/lib/db/tenant";
 import { fromJson } from "@/lib/db/json";
 import { runWithAudit } from "@/platform/audit/context";
 import { claimLedgerJob } from "@/platform/scheduler/ledger";
-import { createTask, nextOccurrence } from "@/platform/workitem";
+import { createTaskRecord } from "@/platform/feature";
+import { nextOccurrence } from "@/platform/workitem";
 import type { WorkerHandler } from "./types";
 
 // Every 15 minutes: spawns the next occurrence of every recurrence rule whose nextSpawnAt has
@@ -42,8 +43,9 @@ const handler: WorkerHandler = {
           await runWithAudit(
             { departmentId: d.id, actorUserId: null, correlationId: idempotencyKey },
             async () => {
-              await createTask(
+              await createTaskRecord(
                 tx,
+                d.id,
                 { userId: template.createdBy, personId: null, departmentId: d.id, isAdmin: true },
                 {
                   title: template.title,

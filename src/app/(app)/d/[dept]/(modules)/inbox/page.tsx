@@ -98,7 +98,7 @@ export default async function InboxPage(props: PageProps<"/d/[dept]/inbox">) {
             return (
               <li key={n.id}>
                 <Card
-                  data-testid={`notification-${n.dedupeKey.split(":")[0]}`}
+                  data-testid={`notification-${n.subjectType ?? "general"}`}
                   className={cn("gap-4 py-4", !n.readAt && "border-l-4 border-l-primary")}
                 >
                   <CardHeader className="gap-1">

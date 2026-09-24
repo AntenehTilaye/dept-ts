@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import linear from "../../fixtures/workflows/linear.json";
-import { PROVISIONAL_DEFINITION_KEYS, seedWorkflows } from "../../../prisma/seed/workflows";
+import { PROVISIONAL_DEFINITION_KEYS } from "../../../prisma/seed/workflows";
 import {
   activeDefinition,
   InvalidDefinitionError,
@@ -14,11 +14,10 @@ import { uniqueSuffix } from "../../setup/factories";
 vi.setConfig({ testTimeout: 60_000 });
 
 describe("workflow definitions", () => {
-  it("after the seed every definition is compiled from a feature or provisional; seedWorkflows is idempotent", async () => {
-    await seedWorkflows(migratorDb);
-    const before = await migratorDb.workflowDefinition.count();
-    await seedWorkflows(migratorDb);
-    expect(await migratorDb.workflowDefinition.count()).toBe(before);
+  it("every definition in the database was compiled from a feature version", async () => {
+    // the provisional `task` machine of P7 is retired: the list is empty, so this asserts that
+    // nothing hand-written is registered any more
+    expect(PROVISIONAL_DEFINITION_KEYS).toEqual([]);
     const rows = await migratorDb.workflowDefinition.findMany({
       where: { NOT: { key: { startsWith: "test." } } },
     });

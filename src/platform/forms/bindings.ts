@@ -143,8 +143,30 @@ export function installBindings(): void {
     return rows.map((r) => ({ value: r.id, label: `${r.code} ${r.name}` }));
   });
 
-  // filled by the feature phase (records of a published feature)
-  registerBinding("records_of_feature", async () => []);
+  // records of a published feature: what a record_picker offers
+  registerBinding("records_of_feature", async (ctx) => {
+    const featureKey = arg(ctx, "featureKey");
+    if (!featureKey) return [];
+    const definition = await ctx.db.featureDefinition.findFirst({
+      where: { key: featureKey, OR: [{ departmentId: ctx.departmentId }, { departmentId: null }] },
+      // a department's own definition wins over the faculty one of the same key
+      orderBy: { departmentId: "desc" },
+      select: { id: true },
+    });
+    if (!definition) return [];
+    const presetKey = arg(ctx, "presetKey");
+    const states = Array.isArray(ctx.args?.states) ? (ctx.args.states as string[]) : undefined;
+    const rows = await ctx.db.featureRecord.findMany({
+      where: {
+        definitionId: definition.id,
+        ...(presetKey ? { presetKey } : {}),
+        ...(states?.length ? { currentStateKey: { in: states } } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+    return rows.map((r) => ({ value: r.id, label: `${r.number} · ${r.title}` }));
+  });
 
   registerBinding("participants_of_parent", async ({ db, subject }) => {
     if (!subject) return [];

@@ -8,7 +8,6 @@ import { seedPermissions } from "./seed/permissions";
 import { seedUsers } from "./seed/users";
 import { seedCalendar } from "./seed/calendar";
 import { seedDemo } from "./seed/demo";
-import { seedWorkflows } from "./seed/workflows";
 import { seedReminderSchedules } from "./seed/reminder-schedules";
 import { seedTemplates } from "./seed/templates";
 import { seedForms } from "./seed/forms";
@@ -29,7 +28,6 @@ export async function runSeed(db: PrismaClient) {
   await seedDepartments(db);
   await seedUsers(db);
   await seedCalendar(db);
-  await seedWorkflows(db);
   await seedReminderSchedules(db);
   await seedTemplates(db);
   await seedForms(db);

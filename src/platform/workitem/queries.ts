@@ -24,6 +24,8 @@ export interface TaskFilter {
 
 export interface TaskRow {
   id: string;
+  /** The FeatureRecord the task is: what its pages are addressed by. */
+  recordId: string | null;
   title: string;
   description: string | null;
   kind: TaskKind;
@@ -101,11 +103,29 @@ export async function listTasks(
   });
   if (tasks.length === 0) return [];
 
+  // a task IS a FeatureRecord since the feature kernel, and the record holds the state; a row
+  // created before it still has the provisional instance of its own
+  const recordIds = tasks.map((t) => t.featureRecordId).filter((id): id is string => !!id);
+  const records = recordIds.length
+    ? await db.featureRecord.findMany({
+        where: { id: { in: recordIds } },
+        select: { id: true, currentStateKey: true },
+      })
+    : [];
+  const stateOfRecord = new Map(records.map((r) => [r.id, r.currentStateKey]));
   const instances = await db.workflowInstance.findMany({
     where: { subjectType: "task", subjectId: { in: tasks.map((t) => t.id) } },
     select: { subjectId: true, currentState: true },
   });
-  const stateOf = new Map(instances.map((i) => [i.subjectId, i.currentState]));
+  const legacyState = new Map(instances.map((i) => [i.subjectId, i.currentState]));
+  const stateOf = new Map(
+    tasks.map((t) => [
+      t.id,
+      (t.featureRecordId ? stateOfRecord.get(t.featureRecordId) : null) ??
+        legacyState.get(t.id) ??
+        null,
+    ]),
+  );
 
   // resolve assignee names in one pass (person assignments and group members)
   const personIds = new Set<string>();
@@ -131,6 +151,7 @@ export async function listTasks(
     const state = stateOf.get(t.id) ?? null;
     return {
       id: t.id,
+      recordId: t.featureRecordId,
       title: t.title,
       description: t.description,
       kind: t.kind,

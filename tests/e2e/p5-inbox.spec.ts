@@ -12,10 +12,10 @@ test.describe("inbox, templates and reminders", () => {
     await expect(page.getByTestId("inbox-badge")).toBeVisible();
     await page.getByTestId("inbox-link").click();
     await expect(page).toHaveURL(/\/d\/cs\/inbox/);
-    const policy = page.getByTestId("notification-demo").filter({ hasText: "assessment policy" });
+    const policy = page.getByTestId("notification-general").filter({ hasText: "assessment policy" });
     await policy.getByRole("button", { name: "Acknowledge" }).click();
     await expect(policy.getByText("acknowledged")).toBeVisible();
-    const duty = page.getByTestId("notification-demo").filter({ hasText: "Invigilation duty" });
+    const duty = page.getByTestId("notification-general").filter({ hasText: "Invigilation duty" });
     await duty.getByLabel("Reason").fill("Conference travel");
     await duty.getByRole("button", { name: "Decline" }).click();
     await expect(duty.getByText("declined")).toBeVisible();

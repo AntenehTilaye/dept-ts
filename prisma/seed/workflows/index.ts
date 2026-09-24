@@ -1,20 +1,6 @@
-import type { PrismaClient } from "../../../src/generated/prisma/client";
-import {
-  taskDefinition,
-  TASK_DEFINITION_KEY,
-} from "../../../src/platform/workflow/definitions/task";
-import { upsertDefinition } from "../../../src/platform/workflow/registry";
-
 // Workflow definitions are compiled from FeatureDefinitions (key "feature:<key>") by the
-// feature phase; nothing else is seeded here. The only rows allowed to exist without a
-// featureVersionId are the provisional definitions listed below — today just the work-item
-// `task` machine, retired again once the feature kernel compiles and backfills `feature:task`.
-export const PROVISIONAL_DEFINITION_KEYS: readonly string[] = [TASK_DEFINITION_KEY];
+// feature kernel; nothing is seeded here any more. The provisional `task` machine of P7 was
+// retired once `feature:task` compiled and every Task row was backfilled with a record, so a
+// definition without a featureVersionId is now a defect — which is what this list asserts.
+export const PROVISIONAL_DEFINITION_KEYS: readonly string[] = [];
 
-export async function seedWorkflows(db: PrismaClient): Promise<void> {
-  const existing = await db.workflowDefinition.findFirst({
-    where: { key: TASK_DEFINITION_KEY, departmentId: null, status: "active" },
-  });
-  if (existing) return;
-  await upsertDefinition(taskDefinition, { activate: true });
-}

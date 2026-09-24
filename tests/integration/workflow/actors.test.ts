@@ -196,7 +196,8 @@ describe("actor rules", () => {
           currentState: "x",
         },
         step: { transitionKey: "a.b", fromState: "a", toState: "b", system: false, effects: [] },
-        actor: head,
+        // createTask spawns a record of the `task` feature, and a record is owned by a person
+        actor: instructor,
         input: { comment: "hello", fields: { where: "B12" } },
       };
       await runEffects(
@@ -217,6 +218,8 @@ describe("actor rules", () => {
       expect(recorded.some((x) => x.kind === "createTask")).toBe(false);
       const spawned = await tx.task.findFirstOrThrow({ where: { title: "later" } });
       expect(spawned).toMatchObject({ contextType: "resource", contextId: r.id });
+      // and the spawned task has the one task lifecycle, on its own record
+      expect(spawned.featureRecordId).not.toBeNull();
       await expect(
         runEffects([{ kind: "invokeHandler", args: { handler: "missing" } }], ctx),
       ).rejects.toThrow(/unknown handler/);

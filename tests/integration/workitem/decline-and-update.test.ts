@@ -5,7 +5,8 @@ import { dispatchPending } from "@/platform/audit/outbox";
 import type { Actor } from "@/platform/identity/can";
 import { decline } from "@/platform/scheduler/inbox";
 import { list } from "@/platform/thread";
-import { createTask, requestUpdate, setDeadline } from "@/platform/workitem";
+import { createTaskRecord } from "@/platform/feature";
+import { requestUpdate, setDeadline, transition } from "@/platform/workitem";
 import { migratorDb, withDept } from "../../setup/db";
 import { DEPT_CS } from "../../setup/seed-minimal";
 import * as f from "../../setup/factories";
@@ -40,16 +41,24 @@ beforeAll(async () => {
 
 const DAY = 86_400_000;
 
+// A task is a record of the `task` feature, so the tests create one the way everything else
+// does and then use the work-item service the task pages call.
+async function newTask(input: Parameters<typeof createTaskRecord>[3]) {
+  return withTenantTx(DEPT_CS, (tx) => createTaskRecord(tx, DEPT_CS, head, input));
+}
+
 describe("declining, nudging and moving the deadline", () => {
   it("declining posts a comment on the task thread and notifies the creator", async () => {
-    const task = await withTenantTx(DEPT_CS, (tx) =>
-      createTask(tx, head, {
-        title: "Invigilate the CS201 final",
-        assignees: [{ type: "person", id: instructorPersonId }],
-      }),
-    );
+    const { recordId, taskId } = await newTask({
+      title: "Invigilate the CS201 final",
+      assignees: [{ type: "person", id: instructorPersonId }],
+    });
     const n = await migratorDb.notification.findFirstOrThrow({
-      where: { subjectType: "task", subjectId: task.id, recipientPersonId: instructorPersonId },
+      where: {
+        subjectType: "feature_record",
+        subjectId: recordId,
+        recipientPersonId: instructorPersonId,
+      },
     });
     await withTenantTx(DEPT_CS, (tx) =>
       decline(tx, instructorPersonId, n.id, "I am at a conference that week"),
@@ -57,7 +66,7 @@ describe("declining, nudging and moving the deadline", () => {
     await dispatchPending(100);
 
     const thread = await migratorDb.thread.findFirstOrThrow({
-      where: { subjectType: "task", subjectId: task.id, kind: "comments" },
+      where: { subjectType: "task", subjectId: taskId, kind: "comments" },
     });
     const comments = await withTenantTx(DEPT_CS, (tx) => list(tx, head, thread.id));
     expect(comments).toHaveLength(1);
@@ -66,36 +75,34 @@ describe("declining, nudging and moving the deadline", () => {
 
     // notify() appends the recipient to the caller's key
     const toCreator = await migratorDb.notification.findUniqueOrThrow({
-      where: { dedupeKey: `task:${task.id}:declined:${instructorPersonId}:${headPersonId}` },
+      where: { dedupeKey: `task:${taskId}:declined:${instructorPersonId}:${headPersonId}` },
     });
     expect(toCreator.recipientPersonId).toBe(headPersonId);
     expect(toCreator.body).toContain("conference");
     // the acknowledgement state reflects the decline
     const acks = await migratorDb.notification.findMany({
-      where: { subjectType: "task", subjectId: task.id, ackRequired: true },
+      where: { subjectType: "feature_record", subjectId: recordId, ackRequired: true },
     });
     expect(acks.every((a) => a.declinedAt !== null)).toBe(true);
   });
 
   it("requestUpdate notifies the responsible assignees once per minute key", async () => {
-    const task = await withTenantTx(DEPT_CS, (tx) =>
-      createTask(tx, head, {
-        title: "Where are we?",
-        assignees: [{ type: "person", id: instructorPersonId }],
-      }),
-    );
+    const { taskId } = await newTask({
+      title: "Where are we?",
+      assignees: [{ type: "person", id: instructorPersonId }],
+    });
     const n = await withTenantTx(DEPT_CS, (tx) =>
-      requestUpdate(tx, head, task.id, "Any progress on the draft?"),
+      requestUpdate(tx, head, taskId, "Any progress on the draft?"),
     );
     expect(n).toBe(1);
     const again = await withTenantTx(DEPT_CS, (tx) =>
-      requestUpdate(tx, head, task.id, "Any progress on the draft?"),
+      requestUpdate(tx, head, taskId, "Any progress on the draft?"),
     );
     expect(again).toBe(0); // deduped
     const row = await migratorDb.notification.findFirstOrThrow({
       where: {
         subjectType: "task",
-        subjectId: task.id,
+        subjectId: taskId,
         recipientPersonId: instructorPersonId,
         category: "assignment",
         templateKey: "task_update_request",
@@ -106,33 +113,41 @@ describe("declining, nudging and moving the deadline", () => {
 
   it("moving the deadline cancels the old reminder keys and schedules new ones", async () => {
     const first = new Date(Date.now() + 3 * DAY);
-    const task = await withTenantTx(DEPT_CS, (tx) =>
-      createTask(tx, head, {
-        title: "Moving target",
-        dueAt: first,
-        assignees: [{ type: "person", id: instructorPersonId }],
-      }),
-    );
-    const before = await migratorDb.scheduledJob.findMany({
-      where: { subjectType: "task", subjectId: task.id },
+    const { recordId, taskId } = await newTask({
+      title: "Moving target",
+      dueAt: first,
+      assignees: [{ type: "person", id: instructorPersonId }],
     });
+    // the reminders belong to the step being worked on
+    await withTenantTx(DEPT_CS, (tx) => transition(tx, head, taskId, "start", { system: true }));
+    const step = await migratorDb.featureStepInstance.findFirstOrThrow({
+      where: { recordId, stepKey: "in_progress", status: "active" },
+    });
+    const subject = { subjectType: "feature_step_instance" as const, subjectId: step.id };
+    const before = await migratorDb.scheduledJob.findMany({ where: subject });
     expect(before.length).toBeGreaterThan(0);
 
     const second = new Date(Date.now() + 10 * DAY);
-    await withTenantTx(DEPT_CS, (tx) => setDeadline(tx, head, task.id, second));
+    await withTenantTx(DEPT_CS, (tx) => setDeadline(tx, head, taskId, second));
     expect(
-      (await migratorDb.task.findUniqueOrThrow({ where: { id: task.id } })).dueAt?.getTime(),
+      (await migratorDb.task.findUniqueOrThrow({ where: { id: taskId } })).dueAt?.getTime(),
     ).toBe(second.getTime());
     const cancelled = await migratorDb.scheduledJob.findMany({
       where: { idempotencyKey: { in: before.map((b) => b.idempotencyKey) } },
     });
     expect(cancelled.every((c) => c.status === "cancelled")).toBe(true);
     const subscription = await migratorDb.reminderSubscription.findFirstOrThrow({
-      where: { subjectType: "task", subjectId: task.id, active: true },
+      where: { ...subject, active: true },
     });
     expect(subscription.resolvedDeadlineAt?.getTime()).toBe(second.getTime());
+    // the record and its step moved with it
+    expect(
+      (
+        await migratorDb.featureStepInstance.findUniqueOrThrow({ where: { id: step.id } })
+      ).deadlineAt?.getTime(),
+    ).toBe(second.getTime());
     const instance = await migratorDb.workflowInstance.findFirstOrThrow({
-      where: { subjectType: "task", subjectId: task.id },
+      where: { subjectType: "feature_record", subjectId: recordId },
     });
     expect(instance.dueAt?.getTime()).toBe(second.getTime());
   });

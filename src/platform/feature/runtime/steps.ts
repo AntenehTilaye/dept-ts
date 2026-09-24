@@ -8,7 +8,7 @@ import { notify } from "../../scheduler/notify";
 import { cancelBySubject, subscribeReminders } from "../../scheduler/reminders";
 import { enqueue } from "../../scheduler/enqueue";
 import { createTask } from "../../workitem/service";
-import { addAssignees } from "../../workitem/assignments";
+import { assigneePersonIds } from "../../workitem/assignments";
 import { runAdapter, getAdapter } from "../adapters/registry";
 import { audienceArgs, type AutoTrigger } from "../compile";
 import { branchesOf, type DeadlineRule, type StepDef } from "../schema";
@@ -284,6 +284,55 @@ export async function refreshCaches(ctx: StepContext): Promise<void> {
   });
 }
 
+/**
+ * Moves a record's deadline: the answer the deadline rules read, the deadline of every step
+ * being worked on right now, and the reminders that follow them. This is what "move the
+ * deadline" on a task does — a task's deadline is its record's, not a column somebody edits.
+ */
+export async function moveDeadline(
+  tx: Db,
+  recordId: string,
+  dueAt: Date | null,
+): Promise<void> {
+  const ctx = await contextOfRecord(tx, null, recordId);
+  const fieldKey = deadlineFieldOf(ctx.resolved);
+  if (fieldKey) {
+    const data = { ...dataOf(ctx.record), [fieldKey]: dueAt ? dueAt.toISOString() : null };
+    await tx.featureRecord.update({ where: { id: recordId }, data: { data: toJson(data) } });
+    ctx.record.data = data;
+  }
+
+  const active = await tx.featureStepInstance.findMany({
+    where: { recordId, status: "active" },
+  });
+  for (const instance of active) {
+    const leaf = ctx.resolved.tree.byKey[instance.stepKey];
+    if (!leaf) continue;
+    const deadline = await resolveDeadline(ctx, leaf.step.deadline);
+    await tx.featureStepInstance.update({
+      where: { id: instance.id },
+      data: { deadlineAt: deadline },
+    });
+    const assignee: Assignee | null =
+      instance.assigneeType && instance.assigneeId
+        ? ({ type: instance.assigneeType, id: instance.assigneeId } as Assignee)
+        : null;
+    await subscribeStepReminders(ctx, leaf.step, instance.id, deadline, assignee);
+  }
+  await refreshCaches(ctx);
+}
+
+/** The record field the definition's deadline rules are anchored to, if it has one. */
+function deadlineFieldOf(resolved: StepContext["resolved"]): string | null {
+  for (const leaf of resolved.tree.leaves) {
+    const rule = leaf.step.deadline;
+    if (!rule) continue;
+    const anchor = rule.rule === "relative" ? rule.from : rule.rule === "calendar" ? rule.termFrom : null;
+    if (anchor === "record_field" && rule.rule !== "fixed" && rule.fieldKey) return rule.fieldKey;
+  }
+  return null;
+}
+
 // ---- the pieces entering a step needs ------------------------------------------------------
 
 async function backWithTask(
@@ -296,18 +345,10 @@ async function backWithTask(
   const template = ctx.resolved.compiled.taskTemplates[step.key];
   if (!template) return;
 
-  // a task-backed feature already has its Task: the step re-points it instead of adding one
-  if (!template.createTask) {
-    if (ctx.record.taskId && assignee)
-      await addAssignees(
-        ctx.tx,
-        ctx.record.departmentId,
-        ctx.record.taskId,
-        [{ type: assignee.type, id: assignee.id, role: "responsible" }],
-        ctx.record.title,
-      );
-    return;
-  }
+  // A task-backed feature already has its Task, and who that task is FOR is the record's own
+  // header — not whoever the current step happens to be assigned to. Adding the step's assignee
+  // here would put the creator on the task the moment it is drafted.
+  if (!template.createTask) return;
   if (!ctx.actor) return;
 
   const task = await createTask(ctx.tx, ctx.actor, {
@@ -319,9 +360,12 @@ async function backWithTask(
     dueAt: deadline,
     expectedDeliverables: template.expectedDeliverables,
     reminderScheduleKey: template.reminderScheduleKey ?? null,
+    featureStepInstanceId: stepInstanceId,
   });
-  await ctx.tx.task.update({ where: { id: task.id }, data: { featureStepInstanceId: stepInstanceId } });
-  await ctx.tx.featureStepInstance.update({ where: { id: stepInstanceId }, data: { taskId: task.id } });
+  await ctx.tx.featureStepInstance.update({
+    where: { id: stepInstanceId },
+    data: { taskId: task.id },
+  });
 }
 
 async function completeTask(tx: Db, taskId: string): Promise<void> {
@@ -413,11 +457,19 @@ async function notifyStep(
   stepInstanceId: string,
   assignee: Assignee | null,
 ): Promise<void> {
+  // a task-backed record's step is worked on by whoever the Task is assigned to — which may be a
+  // whole audience snapshotted at creation, not the single person a step assignee rule resolves
+  const taskAssignees = ctx.record.taskId ? await assigneePersonIds(ctx.tx, ctx.record.taskId) : [];
+
   for (const rule of step.notifications[phase]) {
     const args = audienceArgs(rule.to);
     const recipients =
-      args.recipientRule === "feature_assignee" && assignee?.type === "person"
-        ? [assignee.id]
+      args.recipientRule === "feature_assignee"
+        ? taskAssignees.length
+          ? taskAssignees
+          : assignee?.type === "person"
+            ? [assignee.id]
+            : undefined
         : args.recipientRule === "feature_owner"
           ? [ctx.record.ownerPersonId]
           : args.recipientRule === "feature_creator"

@@ -39,8 +39,10 @@ export default async function MyWorkPage(props: PageProps<"/d/[dept]/my-work">) 
     if (filter === "review") return r.state === "submitted" || r.state === "under_review";
     return true;
   });
+  // a task is addressed by its feature record everywhere in the UI (see the rewrites in
+  // next.config.ts); only rows predating the feature kernel fall back to the task id
   const tableRows: TaskTableRow[] = visible.map((r) => ({
-    id: r.id,
+    id: r.recordId ?? r.id,
     title: r.title,
     kind: r.kind,
     priority: r.priority,
@@ -48,7 +50,7 @@ export default async function MyWorkPage(props: PageProps<"/d/[dept]/my-work">) 
     due: r.dueAt ? r.dueAt.toISOString().slice(0, 10) : "—",
     overdue: r.overdue,
     assignees: r.assigneeNames.join(", ") || "—",
-    href: `/d/${dept}/tasks/${r.id}`,
+    href: `/d/${dept}/tasks/${r.recordId ?? r.id}`,
   }));
   const href = (f: string) => `/d/${dept}/my-work?filter=${f}`;
 

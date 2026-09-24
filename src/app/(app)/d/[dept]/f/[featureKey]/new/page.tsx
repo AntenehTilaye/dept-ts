@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { dbOf, pageContext } from "@/lib/auth/page";
 import { requireCan } from "@/lib/auth/require";
 import { FeatureNotFoundError, getDefinition } from "@/platform/feature";
+import { boundOptionsFor } from "@/platform/forms";
 import { NewRecordForm } from "@/features/runtime/NewRecordForm";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,15 @@ export default async function NewRecordPage(props: PageProps<"/d/[dept]/f/[featu
   const parentType = Array.isArray(search.parentType) ? search.parentType[0] : search.parentType;
   const parentId = Array.isArray(search.parentId) ? search.parentId[0] : search.parentId;
 
+  // the pickers of this form (who the task goes to, which record it hangs under, ...) get their
+  // choices from the department's own data
+  const boundOptions = await boundOptionsFor(resolved.def.record.fields, {
+    db,
+    departmentId: ctx.departmentId,
+    personId: ctx.personId,
+    subject: parentType && parentId ? { subjectType: parentType, subjectId: parentId } : null,
+  });
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <PageHeader
@@ -49,6 +59,7 @@ export default async function NewRecordPage(props: PageProps<"/d/[dept]/f/[featu
             dept={dept}
             featureKey={featureKey}
             fields={resolved.def.record.fields}
+            boundOptions={boundOptions}
             presets={Object.entries(resolved.def.presets).map(([key, p]) => ({
               key,
               label: p.label,

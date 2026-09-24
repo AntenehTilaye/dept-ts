@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { toast } from "sonner";
-import type { FieldDef } from "@/platform/forms/field-schema";
+import type { FieldDef, Option } from "@/platform/forms/field-schema";
 import { FormRenderer, type Answers } from "@/components/forms/FormRenderer";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ export function NewRecordForm({
   dept,
   featureKey,
   fields,
+  boundOptions,
   presets,
   initialPreset,
   parentRef,
@@ -28,6 +29,7 @@ export function NewRecordForm({
   dept: string;
   featureKey: string;
   fields: FieldDef[];
+  boundOptions: Record<string, Option[]>;
   presets: { key: string; label: string }[];
   initialPreset?: string;
   parentRef?: { subjectType: string; subjectId: string };
@@ -82,7 +84,13 @@ export function NewRecordForm({
         </div>
       ) : null}
 
-      <FormRenderer fields={fields} answers={answers} onChange={setAnswers} issues={issues} />
+      <FormRenderer
+        fields={fields}
+        answers={answers}
+        onChange={setAnswers}
+        issues={issues}
+        boundOptions={boundOptions}
+      />
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>

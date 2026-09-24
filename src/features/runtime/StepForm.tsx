@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { toast } from "sonner";
-import type { FieldDef } from "@/platform/forms/field-schema";
+import type { FieldDef, Option } from "@/platform/forms/field-schema";
 import { FormRenderer, type Answers } from "@/components/forms/FormRenderer";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ export function StepForm({
   stepKey,
   branchKey,
   fields,
+  boundOptions,
   initialAnswers,
   actions,
   readOnly,
@@ -46,6 +47,7 @@ export function StepForm({
   stepKey: string;
   branchKey?: string;
   fields: FieldDef[];
+  boundOptions: Record<string, Option[]>;
   initialAnswers: Answers;
   actions: StepAction[];
   readOnly: boolean;
@@ -112,6 +114,7 @@ export function StepForm({
       {fields.length ? (
         <FormRenderer
           fields={fields}
+          boundOptions={boundOptions}
           answers={answers}
           onChange={readOnly ? () => {} : setAnswers}
           issues={issues}

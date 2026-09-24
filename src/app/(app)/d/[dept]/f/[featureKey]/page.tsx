@@ -129,7 +129,7 @@ export default async function FeatureListPage(props: PageProps<"/d/[dept]/f/[fea
               </TableHeader>
               <TableBody>
                 {rows.map((row) => (
-                  <TableRow key={row.id} data-testid={`record-${row.number}`}>
+                  <TableRow key={row.id} data-testid={`record-${row.id}`} data-number={row.number}>
                     {view.columns.map((column, i) => (
                       <TableCell key={column.field}>
                         {i === 0 ? (
