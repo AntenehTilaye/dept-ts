@@ -81,4 +81,14 @@ export const jsonSchemas: Record<string, ZodType> = {
   "CampaignSubject.evaluatorAudienceSpecJson": z.record(z.string(), z.unknown()).nullable(),
   "AggregationResult.groupByJson": z.record(z.string(), z.unknown()),
   "AggregationResult.statsJson": z.record(z.string(), z.unknown()),
+  // The authored aggregate and its compiled artefacts are validated by their own schemas
+  // (src/platform/feature/schema.ts, compile.ts) before they are written.
+  "FeatureDefinitionVersion.json": z.record(z.string(), z.unknown()),
+  "FeatureDefinitionVersion.compiledJson": z.record(z.string(), z.unknown()).nullable(),
+  "FeatureRecord.data": z.record(z.string(), z.unknown()),
+  "FeatureRecord.branchStatesCache": z.record(z.string(), z.unknown()).nullable(),
+  "FeatureMigration.stateMap": z.record(z.string(), z.string()),
+  "FeatureMigration.stepMap": z.record(z.string(), z.string()),
+  "FeatureMigration.plan": z.record(z.string(), z.unknown()),
+  "FeatureMigration.blockedIds": z.array(z.string()).nullable(),
 };

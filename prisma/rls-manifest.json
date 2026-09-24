@@ -73,6 +73,22 @@
       "table": "enrollment"
     },
     {
+      "model": "FeatureMigration",
+      "table": "feature_migration"
+    },
+    {
+      "model": "FeatureNumberSequence",
+      "table": "feature_number_sequence"
+    },
+    {
+      "model": "FeatureRecord",
+      "table": "feature_record"
+    },
+    {
+      "model": "FeatureStepInstance",
+      "table": "feature_step_instance"
+    },
+    {
       "model": "Group",
       "table": "group"
     },
@@ -179,6 +195,10 @@
       "table": "domain_event"
     },
     {
+      "model": "FeatureDefinition",
+      "table": "feature_definition"
+    },
+    {
       "model": "FormDefinition",
       "table": "form_definition"
     },
@@ -213,6 +233,10 @@
       "table": "account"
     },
     {
+      "model": "AdapterRegistration",
+      "table": "adapter_registration"
+    },
+    {
       "model": "ChannelPreference",
       "table": "channel_preference"
     },
@@ -223,6 +247,10 @@
     {
       "model": "EventHandlerReceipt",
       "table": "event_handler_receipt"
+    },
+    {
+      "model": "FeatureDefinitionVersion",
+      "table": "feature_definition_version"
     },
     {
       "model": "Invitation",
@@ -269,5 +297,5 @@
       "table": "verification"
     }
   ],
-  "hash": "2a6d554e14a14715c752d8c2398cf61f407eda43111509c7f39d5e593a86f86f"
+  "hash": "d658afd24834992c8c490bafc0fe86c2830ab32ee34aa82145776e93c5ccbd08"
 }

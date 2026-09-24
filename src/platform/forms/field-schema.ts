@@ -1,7 +1,13 @@
 import { z } from "zod";
+import { ActorRule } from "../workflow/actor-rules";
 
 // The field contract shared by forms and (from the feature builder phase) record headers.
 // A FieldDef is what an administrator composes; a Question row is its stored form.
+//
+// The feature builder authors the same shape, so the three keys it adds (`readOnly`,
+// `visibleTo`, `recordPicker`) live here rather than in a parallel contract. They describe who
+// sees a field, not what a valid answer is, so they never reach a Question row or the questions
+// hash: the runtime reads them from the pinned feature version.
 
 export const QuestionType = z.enum([
   "short_text",
@@ -100,6 +106,12 @@ export interface FieldDef {
   fields?: FieldDef[];
   computedBy?: string | null;
   locked?: boolean;
+  /** Feature builder: rendered but never editable. */
+  readOnly?: boolean;
+  /** Feature builder: shown only to actors matching one of these rules. */
+  visibleTo?: z.infer<typeof ActorRule>[];
+  /** Feature builder: which feature's records a record_picker offers. */
+  recordPicker?: { featureKey: string; presetKey?: string; states?: string[] };
 }
 
 export const FieldDef: z.ZodType<FieldDef> = z.lazy(() =>
@@ -122,6 +134,15 @@ export const FieldDef: z.ZodType<FieldDef> = z.lazy(() =>
       fields: z.array(FieldDef).optional(),
       computedBy: z.string().nullish(),
       locked: z.boolean().optional(),
+      readOnly: z.boolean().optional(),
+      visibleTo: z.array(ActorRule).optional(),
+      recordPicker: z
+        .object({
+          featureKey: z.string().min(1),
+          presetKey: z.string().min(1).optional(),
+          states: z.array(z.string().min(1)).optional(),
+        })
+        .optional(),
     })
     .strict(),
 );

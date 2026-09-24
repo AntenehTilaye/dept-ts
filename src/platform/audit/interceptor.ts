@@ -118,7 +118,9 @@ export const auditExtension = Prisma.defineExtension((client) =>
         async $allOperations({ model, operation, args, query }) {
           if (!WRITE_OPS.has(operation) || !auditSubjectOf(model)) return query(args);
           const ctx = currentAudit();
-          const db = (ctx?.tx ?? client) as unknown as Db;
+          // each side is narrowed on its own: unioning the extended client with a transaction
+          // client makes the checker compare two very large generic types (TS2321)
+          const db: Db = ctx?.tx ? (ctx.tx as unknown as Db) : (client as unknown as Db);
           const delegate = delegateOf(db, model);
           const a = args as Args;
 

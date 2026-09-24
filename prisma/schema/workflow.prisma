@@ -22,7 +22,8 @@ model WorkflowDefinition {
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  instances WorkflowInstance[]
+  instances       WorkflowInstance[]
+  featureVersions FeatureDefinitionVersion[]
 
   @@unique([departmentId, key, version])
   @@index([key, status])
@@ -50,7 +51,8 @@ model WorkflowInstance {
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
 
-  transitions WorkflowTransitionLog[]
+  transitions   WorkflowTransitionLog[]
+  featureRecord FeatureRecord?
 
   @@unique([subjectType, subjectId, definitionKey])
   @@index([departmentId, definitionKey, currentState])

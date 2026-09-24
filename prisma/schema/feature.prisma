@@ -1,1 +1,217 @@
-// feature models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Feature builder (design part 03 §2): an administrator composes a process as data and the
+// compiler turns it into the artefacts of the other kernels — one WorkflowDefinition, a form
+// per step, task and reminder templates, permissions. A record is therefore never a hand-written
+// module: `FeatureRecord` is the subject the workflow moves, and every derived column below is a
+// cache written only by the compiled feature.* effects.
+
+/// A composable feature. NULL departmentId = faculty-wide (the built-ins); a department row with
+/// the same key shadows it. SHARED.
+model FeatureDefinition {
+  id              String      @id @default(cuid())
+  departmentId    String?     @map("department_id")
+  department      Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  key             String
+  name            String
+  description     String?
+  icon            String
+  navGroup        String      @map("nav_group")
+  navOrder        Int         @map("nav_order")
+  scopeLevel      ScopeType   @map("scope_level")
+  isSystem        Boolean     @default(false) @map("is_system")
+  activeVersionId String?     @unique @map("active_version_id")
+  createdBy       String      @map("created_by")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  activeVersion FeatureDefinitionVersion?  @relation("ActiveVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
+  versions      FeatureDefinitionVersion[] @relation("Versions")
+  records       FeatureRecord[]
+  migrations    FeatureMigration[]
+
+  @@unique([key, departmentId])
+  @@index([departmentId, navGroup, navOrder])
+  @@map("feature_definition")
+}
+
+/// One version of a definition: the authored aggregate, its compiled artefacts and the two
+/// hashes the seed and the lock check compare. GLOBAL child of FeatureDefinition.
+model FeatureDefinitionVersion {
+  id           String               @id @default(cuid())
+  definitionId String               @map("definition_id")
+  definition   FeatureDefinition    @relation("Versions", fields: [definitionId], references: [id], onDelete: Cascade)
+  version      Int
+  status       FeatureVersionStatus @default(draft)
+  /// The validated FeatureDefinition aggregate.
+  json         Json
+  /// CompiledFeature: artefact ids, task and reminder templates, permission keys, state index.
+  compiledJson Json?                @map("compiled_json")
+  /// sha256 of the canonical JSON.
+  jsonHash     String               @map("json_hash")
+  /// sha256 of the locked subtree — the baseline a re-seed compares against.
+  lockedHash   String               @map("locked_hash")
+  /// 'seed:<hash>' | 'seed-upgrade:<hash>' | free text from the administrator.
+  changeNote   String?              @map("change_note")
+
+  workflowDefinitionId String?             @map("workflow_definition_id")
+  workflowDefinition   WorkflowDefinition? @relation(fields: [workflowDefinitionId], references: [id], onDelete: SetNull)
+  publishedAt          DateTime?           @map("published_at")
+  publishedBy          String?             @map("published_by")
+  createdBy            String              @map("created_by")
+  createdAt            DateTime            @default(now()) @map("created_at")
+
+  activeFor  FeatureDefinition? @relation("ActiveVersion")
+  records    FeatureRecord[]
+  migrations FeatureMigration[] @relation("MigrationTo")
+  migratedTo FeatureMigration[] @relation("MigrationFrom")
+
+  @@unique([definitionId, version])
+  @@index([definitionId, status])
+  @@map("feature_definition_version")
+}
+
+/// One record of a feature: the subject its workflow instance moves. `currentStateKey`,
+/// `branchStatesCache`, `deadlineAt` and `closedAt` are derived caches of the instance. TENANT.
+model FeatureRecord {
+  id                  String                   @id @default(cuid())
+  departmentId        String                   @map("department_id")
+  department          Department               @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  definitionId        String                   @map("definition_id")
+  definition          FeatureDefinition        @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+  /// PINNED: the runtime renders this record from this version, so publishing never moves it.
+  definitionVersionId String                   @map("definition_version_id")
+  definitionVersion   FeatureDefinitionVersion @relation(fields: [definitionVersionId], references: [id], onDelete: Restrict)
+  /// F-<prefix>-<year>-<seq>, unique per department.
+  number              String
+  title               String
+  /// Record header answers plus the ids a backing adapter writes back.
+  data                Json                     @default("{}")
+  presetKey           String?                  @map("preset_key")
+  parentSubjectType   SubjectType?             @map("parent_subject_type")
+  parentSubjectId     String?                  @map("parent_subject_id")
+  scopeType           ScopeType                @map("scope_type")
+  scopeId             String?                  @map("scope_id")
+  ownerPersonId       String                   @map("owner_person_id")
+  owner               Person                   @relation("RecordOwner", fields: [ownerPersonId], references: [id], onDelete: Restrict)
+  createdByPersonId   String                   @map("created_by_person_id")
+  workflowInstanceId  String                   @unique @map("workflow_instance_id")
+  workflowInstance    WorkflowInstance         @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict)
+
+  /// Derived cache of WorkflowInstance.currentState.
+  currentStateKey   String    @map("current_state_key")
+  /// Derived cache of WorkflowInstance.branchStates while inside a parallel group.
+  branchStatesCache Json?     @map("branch_states_cache")
+  /// Derived: deadline of the active step (earliest across branches).
+  deadlineAt        DateTime? @map("deadline_at")
+  firstEditedAt     DateTime? @map("first_edited_at")
+  /// Derived: written by feature.setTerminal.
+  closedAt          DateTime? @map("closed_at")
+  /// Set when record.backing.kind = 'task': the record IS that Task row.
+  taskId            String?   @unique @map("task_id")
+  rowVersion        Int       @default(1) @map("row_version")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  steps FeatureStepInstance[]
+
+  @@unique([departmentId, number])
+  @@index([departmentId, definitionId, currentStateKey])
+  @@index([parentSubjectType, parentSubjectId])
+  @@index([departmentId, ownerPersonId])
+  @@index([departmentId, deadlineAt])
+  @@index([data(ops: JsonbPathOps)], type: Gin)
+  @@map("feature_record")
+}
+
+/// One entry into one step of one record; `sequence` counts re-entries from revision loops.
+/// TENANT.
+model FeatureStepInstance {
+  id           String            @id @default(cuid())
+  departmentId String            @map("department_id")
+  department   Department        @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  recordId     String            @map("record_id")
+  record       FeatureRecord     @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  stepKey      String            @map("step_key")
+  /// Enclosing parallel group, and the static branch key or person id inside it.
+  groupKey     String?           @map("group_key")
+  branchKey    String?           @map("branch_key")
+  sequence     Int               @default(1)
+  status       FeatureStepStatus @default(active)
+  assigneeType AssigneeType?     @map("assignee_type")
+  assigneeId   String?           @map("assignee_id")
+  /// Task(kind = feature_step) backing this step; NULL for task-backed features.
+  taskId       String?           @unique @map("task_id")
+  /// Standalone Submission holding this step's answers.
+  submissionId String?           @unique @map("submission_id")
+  submission   Submission?       @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+
+  deadlineAt          DateTime? @map("deadline_at")
+  enteredAt           DateTime  @default(now()) @map("entered_at")
+  completedAt         DateTime? @map("completed_at")
+  completedByPersonId String?   @map("completed_by_person_id")
+  outcomeActionKey    String?   @map("outcome_action_key")
+
+  @@unique([recordId, stepKey, branchKey, sequence])
+  @@index([departmentId, assigneeType, assigneeId, status])
+  @@index([departmentId, status, deadlineAt])
+  @@map("feature_step_instance")
+}
+
+/// Per department, definition and year counter behind the record number. TENANT.
+model FeatureNumberSequence {
+  departmentId String     @map("department_id")
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  definitionId String     @map("definition_id")
+  year         Int
+  next         Int        @default(1)
+
+  @@id([departmentId, definitionId, year])
+  @@map("feature_number_sequence")
+}
+
+/// One migration run of one department's records from one version to another. TENANT.
+model FeatureMigration {
+  id            String                   @id @default(cuid())
+  departmentId  String                   @map("department_id")
+  department    Department               @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  definitionId  String                   @map("definition_id")
+  definition    FeatureDefinition        @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+  fromVersionId String                   @map("from_version_id")
+  fromVersion   FeatureDefinitionVersion @relation("MigrationFrom", fields: [fromVersionId], references: [id], onDelete: Restrict)
+  toVersionId   String                   @map("to_version_id")
+  toVersion     FeatureDefinitionVersion @relation("MigrationTo", fields: [toVersionId], references: [id], onDelete: Restrict)
+  /// { "<oldState|group.branch.state>": "<newState>" | "$block" }
+  stateMap      Json                     @map("state_map")
+  /// { "<oldStepKey>": "<newStepKey>" } — carries submissions and attachments forward.
+  stepMap       Json                     @map("step_map")
+  /// Preview: counts per state, blocked states, warnings.
+  plan          Json
+
+  status          FeatureMigrationStatus @default(planned)
+  recordsTotal    Int                    @default(0) @map("records_total")
+  recordsMigrated Int                    @default(0) @map("records_migrated")
+  recordsBlocked  Int                    @default(0) @map("records_blocked")
+  /// Record ids the map cannot place; they stay pinned to the old version.
+  blockedIds      Json?                  @map("blocked_ids")
+  pgBossJobId     String?                @map("pg_boss_job_id")
+  startedBy       String                 @map("started_by")
+  startedAt       DateTime?              @map("started_at")
+  finishedAt      DateTime?              @map("finished_at")
+  error           String?
+
+  @@index([departmentId, definitionId, status])
+  @@map("feature_migration")
+}
+
+/// What the code offers a definition: guards, effects, backings, bindings. Refreshed at boot by
+/// both processes from the in-memory AdapterRegistry. GLOBAL.
+model AdapterRegistration {
+  key          String      @id
+  module       String
+  hook         AdapterHook
+  description  String
+  simulable    Boolean     @default(false)
+  version      Int         @default(1)
+  registeredAt DateTime    @updatedAt @map("registered_at")
+
+  @@map("adapter_registration")
+}

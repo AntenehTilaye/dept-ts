@@ -3,6 +3,8 @@ import { z } from "zod";
 // Who may act / who is assigned (design part 03 §1). Shared by the workflow contract and the
 // feature builder; the feature phase re-exports it.
 
+// The membership roles plus the RoleGrant-only `committee_chair` and the global `admin`
+// (part 03 §1: RoleKey = NavRoleKey ∪ {committee_chair}); `src/lib/auth/access.ts` owns the list.
 export const RoleKeySchema = z.enum([
   "department_head",
   "deputy_head",
@@ -12,6 +14,7 @@ export const RoleKeySchema = z.enum([
   "student_rep",
   "student",
   "lab_staff",
+  "admin",
 ]);
 
 export const RelationshipRule = z.enum([

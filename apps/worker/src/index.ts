@@ -6,6 +6,8 @@ import { installShutdown } from "./shutdown";
 import { recordHeartbeat, touchHeartbeatFile } from "./handlers/worker-heartbeat";
 import { QUEUES } from "@/platform/scheduler/queues";
 import { bootstrap } from "@/lib/bootstrap";
+import { withTenantBypass } from "@/lib/db/tenant";
+import { syncRegistrations } from "@/platform/feature";
 
 async function main() {
   bootstrap();
@@ -15,6 +17,12 @@ async function main() {
   );
   await registerHandlers(boss);
   await registerSchedules(boss);
+
+  // both processes carry the same adapter registry; the worker is the one that is always up,
+  // so it refreshes the table publish and the admin page read
+  await withTenantBypass({ worker: true, jobName: "boot" }, "refresh adapters", (tx) =>
+    syncRegistrations(tx),
+  ).catch((error) => console.error("[worker] adapter sync failed", error));
 
   touchHeartbeatFile();
   await recordHeartbeat().catch((error) => console.error("[worker] heartbeat write failed", error));

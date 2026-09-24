@@ -18,6 +18,8 @@ import { installThreadSubscribers, registerThreadSubjects } from "@/platform/thr
 import { installWorkItemHooks, registerWorkItemSubjects } from "@/platform/workitem";
 import { installBindings, registerFormSubjects } from "@/platform/forms";
 import { installCampaignSubscribers, registerCampaignSubjects } from "@/platform/campaign";
+import { installFeatureRuntime, registerFeatureSubjects } from "@/platform/feature";
+import { registerModules } from "@/modules";
 
 // Process-wide registrations, loaded once by src/instrumentation.ts (web) and the worker entry
 // point. Idempotent so hot reloads and tests may call it repeatedly.
@@ -35,6 +37,7 @@ export function bootstrap(): void {
   registerWorkItemSubjects();
   registerFormSubjects();
   registerCampaignSubjects();
+  registerFeatureSubjects();
   setSubjectResolver(resolverWith((departmentId) => getDb(departmentId) as unknown as Db));
   setEnginePolicyStore(dbPolicyStore);
   installGrantSubscribers();
@@ -44,6 +47,8 @@ export function bootstrap(): void {
   installWorkItemHooks();
   installBindings();
   installCampaignSubscribers();
+  installFeatureRuntime();
+  registerModules();
   registerDocumentRetention();
   setPeriodDependentsResolver(async (db, periodId) =>
     (await dependentsOfPeriod(db, periodId)).map((s) => ({
