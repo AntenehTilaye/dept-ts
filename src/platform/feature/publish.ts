@@ -43,10 +43,12 @@ export async function publishContext(
   db: Db,
   definitionId: string,
   isSystem: boolean,
+  /** A key is taken only within its own scope: a department definition shadows the faculty one. */
+  departmentId: string | null = null,
 ): Promise<ValidationContext> {
   const [features, forms, templates, schedules, roles] = await Promise.all([
     db.featureDefinition.findMany({
-      select: { id: true, key: true, activeVersionId: true },
+      select: { id: true, key: true, activeVersionId: true, departmentId: true },
     }),
     db.formDefinition.findMany({ where: { status: "published" }, select: { key: true } }),
     db.template.findMany({ select: { key: true } }),
@@ -55,7 +57,9 @@ export async function publishContext(
   ]);
   return {
     isSystem,
-    takenKeys: features.filter((f) => f.id !== definitionId).map((f) => f.key),
+    takenKeys: features
+      .filter((f) => f.id !== definitionId && f.departmentId === departmentId)
+      .map((f) => f.key),
     publishedFeatures: features.filter((f) => f.activeVersionId).map((f) => ({ key: f.key })),
     publishedForms: Array.from(new Set(forms.map((f) => f.key))),
     templateKeys: Array.from(new Set(templates.map((t) => t.key))),
@@ -112,7 +116,7 @@ export async function publishVersionOn(
   // version the seed produced is published without comparing them
   const fromSeed = (version.changeNote ?? "").startsWith("seed");
   const ctx: ValidationContext = {
-    ...(opts.context ?? (await publishContext(tx, definitionId, definition.isSystem))),
+    ...(opts.context ?? (await publishContext(tx, definitionId, definition.isSystem, definition.departmentId))),
     isSystem: definition.isSystem,
     ...(previous && previous.id !== versionId && !fromSeed
       ? { previous: { json: previous.json, locks: allLocks(def, definition.isSystem) } }

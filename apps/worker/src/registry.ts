@@ -5,6 +5,7 @@ import campaignAggregate from "./handlers/campaign-aggregate";
 import campaignClose from "./handlers/campaign-close";
 import campaignOpen from "./handlers/campaign-open";
 import emailDead from "./handlers/email-dead";
+import featureMigrate from "./handlers/feature-migrate";
 import emailSend from "./handlers/email-send";
 import grantReconcile from "./handlers/grant-reconcile";
 import notificationDeliver from "./handlers/notification-deliver";
@@ -34,6 +35,7 @@ export const HANDLERS: readonly WorkerHandler[] = [
   campaignOpen,
   campaignClose,
   campaignAggregate,
+  featureMigrate,
   retentionRun,
   workerHeartbeat,
 ] as WorkerHandler[];

@@ -1,6 +1,7 @@
 import {
   BellIcon,
   BookOpenIcon,
+  BlocksIcon,
   BriefcaseIcon,
   CalendarDaysIcon,
   ClipboardListIcon,
@@ -40,6 +41,8 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   users: UsersIcon,
   departments: LayersIcon,
   permissions: ShieldCheckIcon,
+  features: BlocksIcon,
+  "generic_request": BlocksIcon,
   workflows: WorkflowIcon,
   audit: ScrollTextIcon,
   templates: FileTextIcon,

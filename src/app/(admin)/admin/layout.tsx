@@ -13,6 +13,7 @@ const NAV: NavItem[] = [
   { href: "/admin/templates" as Route, label: "Templates", group: "Configuration" },
   { href: "/admin/forms" as Route, label: "Forms", group: "Configuration" },
   { href: "/admin/reminders" as Route, label: "Reminders", group: "Configuration" },
+  { href: "/admin/features" as Route, label: "Features", group: "Configuration" },
   { href: "/admin/workflows" as Route, label: "Workflows", group: "Operations" },
   { href: "/admin/jobs" as Route, label: "Jobs", group: "Operations" },
   { href: "/admin/audit" as Route, label: "Audit", group: "Operations" },

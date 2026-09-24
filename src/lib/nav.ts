@@ -1,6 +1,9 @@
 import type { Route } from "next";
 import type { DeptCtx } from "./auth/require";
-import { canDo } from "./auth/require";
+import { actorOf, canDo } from "./auth/require";
+import { getDb } from "./db/scoped";
+import type { Db } from "./db/types";
+import { getNav } from "@/platform/feature";
 import type { NavItem } from "@/components/shell/Sidebar";
 
 // Department navigation gated by permissions. The feature runtime appends its entries later.
@@ -35,6 +38,17 @@ const NAV: NavSpec[] = [
   { path: "/documents", label: "Documents", group: "Library", permission: "document.read" },
 ];
 
+/** Sidebar headings for the groups a feature definition may place itself in. */
+const FEATURE_GROUPS: Record<string, string> = {
+  operations: "Work",
+  academic: "Registry",
+  people: "Registry",
+  communication: "Me",
+  planning: "Planning",
+  resources: "Registry",
+  admin: "Administration",
+};
+
 export async function navFor(ctx: DeptCtx): Promise<NavItem[]> {
   const items: NavItem[] = [];
   for (const spec of NAV) {
@@ -46,5 +60,18 @@ export async function navFor(ctx: DeptCtx): Promise<NavItem[]> {
       group: spec.group,
     });
   }
+
+  // published features add themselves: a process an administrator composes appears here without
+  // a deployment, in the group and order its definition names
+  const entries = await getNav(getDb(ctx.departmentId) as unknown as Db, ctx.departmentId, actorOf(ctx), {
+    deptSlug: ctx.deptSlug,
+  });
+  for (const entry of entries)
+    items.push({
+      href: entry.href as Route,
+      label: entry.label,
+      group: FEATURE_GROUPS[entry.group] ?? "Work",
+    });
+
   return items;
 }

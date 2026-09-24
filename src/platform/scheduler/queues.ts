@@ -106,6 +106,13 @@ export const QUEUES: readonly QueueSpec[] = [
     expireInSeconds: 900,
   },
   {
+    name: "feature.migrate",
+    policy: "singleton",
+    retryLimit: 3,
+    retryDelay: 30,
+    expireInSeconds: 1800,
+  },
+  {
     name: "recurrence.spawn",
     policy: "short",
     retryLimit: 1,
