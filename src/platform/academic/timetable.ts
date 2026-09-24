@@ -1,5 +1,6 @@
 import type { RowSource, WeekPattern } from "@/generated/prisma/enums";
 import type { Db } from "../../lib/db/types";
+import { publish } from "../audit/outbox";
 
 export interface TimetableSlotInput {
   sectionOfferingId: string;
@@ -40,7 +41,10 @@ export async function upsertTimetableSlots(
       where: { termId, sectionOfferingId: { in: sectionOfferingIds } },
     });
   }
-  if (slots.length === 0) return 0;
+  if (slots.length === 0) {
+    await announce(db, departmentId, termId, sectionOfferingIds);
+    return 0;
+  }
   const created = await db.classTimetableSlot.createMany({
     data: slots.map((s) => ({
       departmentId,
@@ -56,7 +60,28 @@ export async function upsertTimetableSlots(
       importBatchId: opts.importBatchId ?? null,
     })),
   });
+  await announce(db, departmentId, termId, sectionOfferingIds);
   return created.count;
+}
+
+/**
+ * A timetable is busy time for whoever teaches it and for the room it is in, so every change
+ * says so and the availability feed writes the blocks. Nothing here knows about the ledger.
+ */
+async function announce(
+  db: Db,
+  departmentId: string,
+  termId: string,
+  sectionOfferingIds: string[],
+): Promise<void> {
+  if (!sectionOfferingIds.length) return;
+  await publish(
+    db,
+    "timetable.changed",
+    { subjectType: "term", subjectId: termId },
+    { termId, sectionOfferingIds },
+    { departmentId },
+  );
 }
 
 export async function slotsOfTerm(

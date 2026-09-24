@@ -1,1 +1,66 @@
-// availability models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Availability (design part 04 §18). One busy-time ledger for the whole department: whatever
+// takes a person's or a room's time — a class, a lab, an exam, an invigilation duty, a meeting,
+// an appointment, leave — is an AvailabilityBlock owned by that person or resource, written by
+// the module that owns the source and never edited by hand. Conflicts are therefore one query
+// rather than one per module, and `no_hard_overlap` (constraints_p10) makes a double booking
+// impossible rather than merely unlikely. All TENANT.
+
+/// When somebody is willing to be booked for a purpose: the windows, how long a slot is, how
+/// many a period may hold, the breaks inside the windows and the days they are away. TENANT.
+model AvailabilityPolicy {
+  id                  String        @id @default(cuid())
+  departmentId        String        @map("department_id")
+  department          Department    @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  ownerPersonId       String        @map("owner_person_id")
+  owner               Person        @relation("PolicyOwner", fields: [ownerPersonId], references: [id], onDelete: Cascade)
+  purpose             PolicyPurpose
+  /// [{ weekday, from: "HH:MM", to: "HH:MM" }] in the department's timezone.
+  weeklyWindowsJson   Json          @map("weekly_windows_json")
+  slotMinutes         Int?          @map("slot_minutes")
+  /// Upper bound per period of the purpose (appointments per day, duties per week).
+  maxPerPeriod        Int?          @map("max_per_period")
+  /// [{ weekday, from, to }] carved out of the windows (lunch, teaching preparation).
+  breakWindowsJson    Json          @default("[]") @map("break_windows_json")
+  /// [{ fromAt, toAt, reason }] — whole days or hours away; each becomes a hard `blackout` block.
+  blackoutPeriodsJson Json          @default("[]") @map("blackout_periods_json")
+  validFrom           DateTime      @map("valid_from") @db.Date
+  validTo             DateTime?     @map("valid_to") @db.Date
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  @@index([ownerPersonId, purpose])
+  @@index([departmentId])
+  @@map("availability_policy")
+}
+
+/// One busy interval of a person or a resource. A weekly repeat carries `weekday`/`weekPattern`
+/// and the window it repeats in; `materialiseRecurring` expands those into concrete rows so the
+/// exclusion constraint sees them. `REF(source)` is what wrote it, and rewriting a source means
+/// deleting its blocks and inserting the new ones. TENANT.
+model AvailabilityBlock {
+  id              String       @id @default(cuid())
+  departmentId    String       @map("department_id")
+  department      Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  ownerType       OwnerType    @map("owner_type")
+  ownerId         String       @map("owner_id")
+  startAt         DateTime     @map("start_at")
+  endAt           DateTime     @map("end_at")
+  /// 1 = Monday … 7 = Sunday, set only on a weekly repeat.
+  weekday         Int?
+  weekPattern     WeekPattern? @map("week_pattern")
+  recurringFrom   DateTime?    @map("recurring_from")
+  recurringUntil  DateTime?    @map("recurring_until")
+  kind            BlockKind
+  severity        Severity
+  sourceType      SubjectType? @map("source_type")
+  sourceId        String?      @map("source_id")
+  termId          String?      @map("term_id")
+  term            Term?        @relation(fields: [termId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  @@index([ownerType, ownerId, startAt])
+  @@index([sourceType, sourceId])
+  @@index([departmentId])
+  @@map("availability_block")
+}

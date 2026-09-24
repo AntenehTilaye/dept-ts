@@ -20,6 +20,7 @@ const NAV: NavSpec[] = [
   { path: "/my-work", label: "My work", group: "Me", icon: "my-work" },
   { path: "/inbox", label: "Inbox", group: "Me" },
   { path: "/upcoming", label: "Upcoming", group: "Me" },
+  { path: "/availability", label: "My availability", group: "Me", icon: "availability" },
   {
     path: "/settings/notifications",
     label: "Notification settings",

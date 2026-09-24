@@ -78,6 +78,8 @@ model Department {
   featureStepInstances   FeatureStepInstance[]
   featureNumberSequences FeatureNumberSequence[]
   featureMigrations      FeatureMigration[]
+  availabilityPolicies   AvailabilityPolicy[]
+  availabilityBlocks     AvailabilityBlock[]
 
   @@map("department")
 }
