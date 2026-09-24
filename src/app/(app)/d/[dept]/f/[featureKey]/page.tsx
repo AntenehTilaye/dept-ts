@@ -6,7 +6,7 @@ import { dbOf, pageContext } from "@/lib/auth/page";
 import { canDo } from "@/lib/auth/require";
 import { actorOf } from "@/lib/auth/require";
 import { FeatureNotFoundError, countsByState, featureCounters } from "@/platform/feature";
-import { featureList } from "@/features/runtime/queries";
+import { featureList, stateLabels } from "@/features/runtime/queries";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { SegmentedLinks } from "@/components/patterns/SegmentedLinks";
@@ -63,6 +63,7 @@ export default async function FeatureListPage(props: PageProps<"/d/[dept]/f/[fea
   );
   const byState = await countsByState(db, ctx.departmentId, resolved.definitionId);
   const base = `/d/${dept}/f/${featureKey}`;
+  const labels = stateLabels(resolved);
 
   return (
     <div className="flex flex-col gap-6">
@@ -153,7 +154,7 @@ export default async function FeatureListPage(props: PageProps<"/d/[dept]/f/[fea
       {Object.keys(byState).length ? (
         <p className="text-xs text-muted-foreground">
           {Object.entries(byState)
-            .map(([state, count]) => `${model.resolved.tree.byKey[state]?.step.label ?? state}: ${count}`)
+            .map(([state, count]) => `${labels[state] ?? state}: ${count}`)
             .join(" · ")}
         </p>
       ) : null}
