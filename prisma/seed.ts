@@ -13,6 +13,7 @@ import { seedTemplates } from "./seed/templates";
 import { seedForms } from "./seed/forms";
 import { seedAdapters } from "./seed/adapters";
 import { seedFeatures } from "./seed/features";
+import { seedReportDefinitions } from "../src/platform/reporting";
 import { bootstrap } from "../src/lib/bootstrap";
 import { stopBoss } from "../src/lib/db/boss";
 
@@ -33,6 +34,7 @@ export async function runSeed(db: PrismaClient) {
   await seedForms(db);
   await seedAdapters(db);
   await seedFeatures();
+  await seedReportDefinitions(db);
   if (process.env.SEED_DEMO === "1") await seedDemo(db);
 }
 

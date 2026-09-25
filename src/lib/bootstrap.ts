@@ -21,6 +21,7 @@ import { installCampaignSubscribers, registerCampaignSubjects } from "@/platform
 import { installFeatureRuntime, registerFeatureSubjects } from "@/platform/feature";
 import { installAvailabilityFeeds, registerAvailabilitySubjects } from "@/platform/availability";
 import { installImportKinds, registerImportSubjects } from "@/platform/import";
+import { installSystemReports, registerReportingSubjects } from "@/platform/reporting";
 import { registerModules } from "@/modules";
 
 // Process-wide registrations, loaded once by src/instrumentation.ts (web) and the worker entry
@@ -42,6 +43,7 @@ export function bootstrap(): void {
   registerFeatureSubjects();
   registerAvailabilitySubjects();
   registerImportSubjects();
+  registerReportingSubjects();
   setSubjectResolver(resolverWith((departmentId) => getDb(departmentId) as unknown as Db));
   setEnginePolicyStore(dbPolicyStore);
   installGrantSubscribers();
@@ -54,6 +56,7 @@ export function bootstrap(): void {
   installFeatureRuntime();
   installAvailabilityFeeds();
   installImportKinds();
+  installSystemReports();
   registerModules();
   registerDocumentRetention();
   setPeriodDependentsResolver(async (db, periodId) =>

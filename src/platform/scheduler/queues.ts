@@ -119,6 +119,14 @@ export const QUEUES: readonly QueueSpec[] = [
     expireInSeconds: 600,
     cron: "*/15 * * * *",
   },
+  // a report in pdf needs a browser and a workbook can be large, so both are rendered by the
+  // worker; the singleton key is the report, its parameters and the format
+  {
+    name: "report.generate",
+    policy: "singleton",
+    retryLimit: 2,
+    expireInSeconds: 600,
+  },
   // a file too large to read inside a request is read by the worker instead; the states of the
   // import are the same either way
   {

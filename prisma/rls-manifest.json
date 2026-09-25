@@ -97,6 +97,10 @@
       "table": "feature_step_instance"
     },
     {
+      "model": "GeneratedReport",
+      "table": "generated_report"
+    },
+    {
       "model": "Group",
       "table": "group"
     },
@@ -215,6 +219,10 @@
       "table": "domain_event"
     },
     {
+      "model": "ExportFormatSpec",
+      "table": "export_format_spec"
+    },
+    {
       "model": "FeatureDefinition",
       "table": "feature_definition"
     },
@@ -297,6 +305,10 @@
       "table": "question"
     },
     {
+      "model": "ReportDefinition",
+      "table": "report_definition"
+    },
+    {
       "model": "Session",
       "table": "session"
     },
@@ -317,5 +329,5 @@
       "table": "verification"
     }
   ],
-  "hash": "ad618c1a7883327f3b4b2d463acb3cf7987d32231901b36a30669d302327f510"
+  "hash": "af872fe917add7ed1bc24bc8d40b5ece53302164894a6d765d78a83c74451cc5"
 }

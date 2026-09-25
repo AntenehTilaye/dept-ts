@@ -1,1 +1,71 @@
-// reporting models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Reporting (design part 04 §19). One rendering path for every report: a definition names the
+// data source and the template, and the framework produces PDF, Excel, CSV or HTML from the same
+// rows — so a new report is a registration, not a new way of making a file.
+
+/// What a report is, independent of any department. GLOBAL.
+model ReportDefinition {
+  key                  String         @id
+  title                String
+  /// Registry key of the function that fetches the rows.
+  dataSourceKey        String         @map("data_source_key")
+  /// Registry key of the template that lays them out.
+  templateKey          String         @map("template_key")
+  /// JSON Schema-ish description the parameter form is generated from.
+  parametersSchemaJson Json           @map("parameters_schema_json")
+  supportedFormats     ReportFormat[] @map("supported_formats")
+  requiredPermission   String         @map("required_permission")
+  scheduleSpecJson     Json?          @map("schedule_spec_json")
+  isSystem             Boolean        @default(true) @map("is_system")
+  /// Set when the report belongs to a feature (its records are the rows).
+  featureKey           String?        @map("feature_key")
+
+  generated GeneratedReport[]
+
+  @@map("report_definition")
+}
+
+/// One run of one report: what was asked for, what came out, and what went wrong. TENANT.
+model GeneratedReport {
+  id           String           @id @default(cuid())
+  departmentId String           @map("department_id")
+  department   Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  reportKey    String           @map("report_key")
+  report       ReportDefinition @relation(fields: [reportKey], references: [key], onDelete: Restrict)
+  paramsJson   Json             @map("params_json")
+  format       ReportFormat
+  /// The stored output, once there is one.
+  documentId   String?          @map("document_id")
+  requestedBy  String           @map("requested_by")
+  status       ReportStatus     @default(queued)
+  error        String?
+  generatedAt  DateTime?        @map("generated_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  @@index([departmentId, reportKey, createdAt])
+  @@map("generated_report")
+}
+
+/// A versioned description of a file another system expects, with a sample to check against.
+/// SHARED: a spec without a department is the faculty's.
+model ExportFormatSpec {
+  id                     String        @id @default(cuid())
+  departmentId           String?       @map("department_id")
+  department             Department?   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  name                   String
+  targetSystem           String        @map("target_system")
+  version                Int           @default(1)
+  fileFormat             FileFormat    @map("file_format")
+  sheetName              String?       @map("sheet_name")
+  headerRowIndex         Int           @default(1) @map("header_row_index")
+  /// [{ header, sourcePath, transform?, format?, order, required }]
+  columnsJson            Json          @map("columns_json")
+  rowSource              ExportRowSource @map("row_source")
+  goldenSampleDocumentId String?       @map("golden_sample_document_id")
+  status                 VersionStatus @default(draft)
+  createdAt              DateTime      @default(now()) @map("created_at")
+  updatedAt              DateTime      @updatedAt @map("updated_at")
+
+  @@unique([departmentId, name, version])
+  @@map("export_format_spec")
+}
