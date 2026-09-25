@@ -79,3 +79,23 @@ export async function cancelJobForm(fd: FormData) {
 export async function retryJobForm(fd: FormData) {
   return retryJobAction(formToObject(fd));
 }
+
+/**
+ * The two rebuilds an administrator may need: the search index and the dashboard projections.
+ * Both are derived data — a rebuild costs time, never correctness — so the button is safe to
+ * press, and both are queued rather than run in the request.
+ */
+export const rebuildAction = adminAction(
+  z.object({ what: z.enum(["search", "projections"]), departmentId: z.string().optional() }),
+  async ({ input }) => {
+    const queue = input.what === "search" ? "search.reindex" : "projection.rebuild";
+    const boss = await getBoss();
+    await boss.send(queue, input.departmentId ? { departmentId: input.departmentId } : {});
+    revalidatePath("/admin/jobs");
+    return { queue };
+  },
+);
+
+export async function rebuildForm(fd: FormData) {
+  return rebuildAction(formToObject(fd));
+}

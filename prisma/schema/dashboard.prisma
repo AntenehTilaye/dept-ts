@@ -1,1 +1,21 @@
-// dashboard models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Dashboard projections (design part 04 §19). A dashboard tile must answer instantly, and the
+// question behind it ("how many issues are open in each section") is a scan of several tables.
+// So the answer is kept: a projection row per key, written forward by the events that change it
+// and rebuildable from scratch whenever that is cheaper than trusting it. TENANT.
+
+model DashboardProjection {
+  projectionKey  String     @map("projection_key")
+  /// Identifies the row inside its projection: a section id, a person and a period, ...
+  rowKey         String     @map("row_key")
+  departmentId   String     @map("department_id")
+  department     Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  /// What the row is about, for filtering and grouping.
+  dimensionsJson Json       @default("{}") @map("dimensions_json")
+  /// The numbers themselves.
+  valuesJson     Json       @default("{}") @map("values_json")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  @@id([projectionKey, rowKey])
+  @@index([departmentId, projectionKey])
+  @@map("dashboard_projection")
+}

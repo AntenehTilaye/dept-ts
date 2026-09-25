@@ -86,6 +86,7 @@ model Department {
   generatedReports       GeneratedReport[]
   exportFormatSpecs      ExportFormatSpec[]
   searchEntries          SearchIndexEntry[]
+  dashboardProjections   DashboardProjection[]
 
   @@map("department")
 }
