@@ -22,6 +22,7 @@ import { installFeatureRuntime, registerFeatureSubjects } from "@/platform/featu
 import { installAvailabilityFeeds, registerAvailabilitySubjects } from "@/platform/availability";
 import { installImportKinds, registerImportSubjects } from "@/platform/import";
 import { installSystemReports, registerReportingSubjects } from "@/platform/reporting";
+import { installSearchPermissions, installSearchSubscribers } from "@/platform/search";
 import { registerModules } from "@/modules";
 
 // Process-wide registrations, loaded once by src/instrumentation.ts (web) and the worker entry
@@ -57,6 +58,8 @@ export function bootstrap(): void {
   installAvailabilityFeeds();
   installImportKinds();
   installSystemReports();
+  installSearchSubscribers();
+  installSearchPermissions();
   registerModules();
   registerDocumentRetention();
   setPeriodDependentsResolver(async (db, periodId) =>

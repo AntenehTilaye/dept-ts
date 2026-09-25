@@ -138,4 +138,6 @@ export const jsonSchemas: Record<string, ZodType> = {
       required: z.boolean().optional(),
     }),
   ),
+  // Search: the facets a filter narrows by (module, state, year, ...).
+  "SearchIndexEntry.facetsJson": z.record(z.string(), z.unknown()),
 };

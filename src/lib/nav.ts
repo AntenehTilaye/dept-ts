@@ -38,6 +38,7 @@ const NAV: NavSpec[] = [
   { path: "/resources", label: "Resources", group: "Registry", permission: "academic.manage" },
   { path: "/documents", label: "Documents", group: "Library", permission: "document.read" },
   { path: "/reports", label: "Reports", group: "Library", icon: "reports", permission: "task.view" },
+  { path: "/search", label: "Search", group: "Library", icon: "search" },
 ];
 
 /** Sidebar headings for the groups a feature definition may place itself in. */

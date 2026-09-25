@@ -85,6 +85,7 @@ model Department {
   mappingProfiles        ColumnMappingProfile[]
   generatedReports       GeneratedReport[]
   exportFormatSpecs      ExportFormatSpec[]
+  searchEntries          SearchIndexEntry[]
 
   @@map("department")
 }

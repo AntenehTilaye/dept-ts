@@ -149,6 +149,10 @@
       "table": "role_grant"
     },
     {
+      "model": "SearchIndexEntry",
+      "table": "search_index_entry"
+    },
+    {
       "model": "Section",
       "table": "section"
     },
@@ -329,5 +333,5 @@
       "table": "verification"
     }
   ],
-  "hash": "af872fe917add7ed1bc24bc8d40b5ece53302164894a6d765d78a83c74451cc5"
+  "hash": "c023d6d262c3d40f9878822ec4da5031df070e3db76926065563d8e11b94cd30"
 }

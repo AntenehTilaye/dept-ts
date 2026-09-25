@@ -5,6 +5,12 @@ import { register } from "../subject-registry";
 
 export function registerCampaignSubjects(): void {
   register("campaign", {
+    indexDoc: async (db, id) => {
+      const campaign = await db.campaign.findUnique({ where: { id } });
+      return campaign
+        ? { title: campaign.title, body: campaign.kind, keywords: [campaign.kind] }
+        : null;
+    },
     label: async (db, id) => (await db.campaign.findUnique({ where: { id } }))?.title ?? null,
     snapshot: async (db, id) => {
       const c = await db.campaign.findUnique({ where: { id } });
