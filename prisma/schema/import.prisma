@@ -1,1 +1,85 @@
-// import models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Tabular import (design part 04 §17). One staged pipeline for every spreadsheet the department
+// receives — a roster, a timetable, assessment marks — because the hard parts are the same each
+// time: read the file, work out which column is which, say exactly what is wrong with which row,
+// let somebody fix it, and only then write. A batch is a record of the `import_batch` feature,
+// so the staging IS a workflow and the pipeline never invents its own. All TENANT except the
+// mapping profiles, which a faculty-wide template may share.
+
+/// One attempt at importing one file (or one hand-typed grid) into one context. TENANT.
+model ImportBatch {
+  id                String                @id @default(cuid())
+  departmentId      String                @map("department_id")
+  department        Department            @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  kind              ImportKind
+  /// What the rows are about: a section offering's roster, a term's timetable, ...
+  contextType       SubjectType?          @map("context_type")
+  contextId         String?               @map("context_id")
+  sourceDocumentId  String?               @map("source_document_id")
+  mappingProfileId  String?               @map("mapping_profile_id")
+  mappingProfile    ColumnMappingProfile? @relation(fields: [mappingProfileId], references: [id], onDelete: SetNull)
+  mode              ImportMode            @default(file)
+  /// The record whose lifecycle this batch is; the feature runtime owns the states.
+  featureRecordId   String                @unique @map("feature_record_id")
+  /// Counts the preview and the list show: rows, errors, warnings, what a commit wrote.
+  summaryJson       Json                  @default("{}") @map("summary_json")
+  uploadedBy        String                @map("uploaded_by")
+  /// Derived cache of the commit transition.
+  committedAt       DateTime?             @map("committed_at")
+  /// The batch this one supersedes for the same context and kind.
+  replacesBatchId   String?               @map("replaces_batch_id")
+  replaces          ImportBatch?          @relation("BatchChain", fields: [replacesBatchId], references: [id], onDelete: SetNull)
+  replacedBy        ImportBatch[]         @relation("BatchChain")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+
+  rows ImportRow[]
+
+  @@index([contextType, contextId, kind])
+  @@index([departmentId, kind])
+  @@map("import_batch")
+}
+
+/// One line of the file as it was read, as it was understood, and what is wrong with it. TENANT.
+model ImportRow {
+  id             String      @id @default(cuid())
+  departmentId   String      @map("department_id")
+  department     Department  @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  batchId        String      @map("batch_id")
+  batch          ImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  rowNo          Int         @map("row_no")
+  /// The cells as they arrived, keyed by the header they were under.
+  rawJson        Json        @map("raw_json")
+  /// The cells after mapping and validation, keyed by the field the committer wants.
+  normalizedJson Json?       @map("normalized_json")
+  errorsJson     Json        @default("[]") @map("errors_json")
+  warningsJson   Json        @default("[]") @map("warnings_json")
+  disposition    Disposition @default(ok)
+
+  @@unique([batchId, rowNo])
+  @@index([batchId, disposition])
+  @@index([departmentId])
+  @@map("import_row")
+}
+
+/// A saved answer to "which column is which", reusable next time the same file arrives.
+/// SHARED: a profile without a department is a faculty-wide default.
+model ColumnMappingProfile {
+  id                String      @id @default(cuid())
+  departmentId      String?     @map("department_id")
+  department        Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  kind              ImportKind
+  name              String
+  sheetName         String?     @map("sheet_name")
+  headerRowIndex    Int         @default(1) @map("header_row_index")
+  /// { "<target field>": "<header in the file>" }
+  mappingsJson      Json        @map("mappings_json")
+  /// { "<target field>": ["other", "spellings"] }
+  headerAliasesJson Json        @default("{}") @map("header_aliases_json")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  batches ImportBatch[]
+
+  @@unique([departmentId, kind, name])
+  @@map("column_mapping_profile")
+}

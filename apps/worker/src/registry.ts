@@ -8,6 +8,8 @@ import emailDead from "./handlers/email-dead";
 import featureMigrate from "./handlers/feature-migrate";
 import emailSend from "./handlers/email-send";
 import grantReconcile from "./handlers/grant-reconcile";
+import importParse from "./handlers/import-parse";
+import importValidate from "./handlers/import-validate";
 import notificationDeliver from "./handlers/notification-deliver";
 import outboxDispatch from "./handlers/outbox-dispatch";
 import overdueSweep from "./handlers/overdue-sweep";
@@ -28,6 +30,8 @@ export const HANDLERS: readonly WorkerHandler[] = [
   emailSend,
   emailDead,
   workflowAutoTransition,
+  importParse,
+  importValidate,
   overdueSweep,
   calendarAutotransition,
   grantReconcile,

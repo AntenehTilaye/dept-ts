@@ -173,7 +173,12 @@ export async function featureRecord(
     };
   });
 
-  const actions = await engineActions(db, record.workflowInstanceId, actor);
+  // the buttons read as the definition wrote them, not as the transition keys they are
+  const actions = (await engineActions(db, record.workflowInstanceId, actor)).map((action) => {
+    const [stepKey = "", actionKey = ""] = action.transitionKey.split(".");
+    const authored = resolved.tree.byKey[stepKey]?.step.actions.find((a) => a.key === actionKey);
+    return authored ? { ...action, label: authored.label } : action;
+  });
   const active = instances
     .filter((i) => i.status === "active")
     .map((i) => ({

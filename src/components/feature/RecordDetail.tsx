@@ -51,6 +51,8 @@ export interface RecordDetailProps {
   slotSubject?: { subjectType: string; subjectId: string };
   canUploadSlots?: boolean;
   acknowledgements?: AcknowledgementRow[];
+  /** What the slots are called on this feature; “Deliverables” unless a module says otherwise. */
+  slotsLabel?: string;
   history?: HistoryEntry[];
   comments?: ReactNode;
   documents?: ReactNode;
@@ -79,6 +81,7 @@ export function RecordDetail({
   slotSubject,
   canUploadSlots,
   acknowledgements,
+  slotsLabel,
   history,
   comments,
   documents,
@@ -121,7 +124,9 @@ export function RecordDetail({
       <Tabs defaultValue="details">
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
-          {slots?.length ? <TabsTrigger value="deliverables">Deliverables</TabsTrigger> : null}
+          {slots?.length ? (
+            <TabsTrigger value="deliverables">{slotsLabel ?? "Deliverables"}</TabsTrigger>
+          ) : null}
           {documents ? <TabsTrigger value="documents">Documents</TabsTrigger> : null}
           {comments ? <TabsTrigger value="comments">Comments</TabsTrigger> : null}
           {acknowledgements?.length ? (

@@ -26,6 +26,8 @@ export interface RecordExtras {
   slots?: SlotCard[];
   slotSubject?: { subjectType: string; subjectId: string };
   canUploadSlots?: boolean;
+  /** What to call the slots tab; “Deliverables” unless the module says otherwise. */
+  slotsLabel?: string;
   acknowledgements?: AcknowledgementRow[];
   /** Extra panels, each its own tab. */
   panels?: { key: string; label: string; content: ReactNode }[];

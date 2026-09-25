@@ -20,6 +20,12 @@ const ADAPTERS: Record<string, string> = {
   "case.cancelNudge": "on_exit",
   "case.setResolvedAt": "effect",
   "case.autoClose": "effect",
+  "import_batch.backing": "backing",
+  "import.parse": "effect",
+  "import.validate": "effect",
+  "import.commit": "effect",
+  "import.noRowsInError": "guard",
+  "import.actorMayCommit": "guard",
 };
 
 describe("the seeded features", () => {
