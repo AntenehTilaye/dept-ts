@@ -29,6 +29,18 @@ export function registerPeopleSubjects(): void {
   });
 
   register("person", {
+    indexDoc: async (db, id) => {
+      const person = await db.person.findUnique({ where: { id } });
+      if (!person) return null;
+      const profile = await db.staffProfile.findUnique({ where: { personId: id } });
+      return {
+        title: person.fullName,
+        body: [person.email, person.roleLabel, profile?.specialization, profile?.academicRank]
+          .filter(Boolean)
+          .join(" · "),
+        keywords: [person.type, ...(profile?.staffId ? [profile.staffId] : [])],
+      };
+    },
     label: async (db, id) => (await personOf(db, id))?.fullName ?? null,
     snapshot: async (db, id) => {
       const p = await personOf(db, id);
@@ -46,6 +58,21 @@ export function registerPeopleSubjects(): void {
   });
 
   register("staff_profile", {
+    indexDoc: async (db, id) => {
+      const profile = await db.staffProfile.findUnique({
+        where: { personId: id },
+        include: { person: { select: { fullName: true, email: true } } },
+      });
+      return profile
+        ? {
+            title: profile.person.fullName,
+            body: [profile.academicRank, profile.specialization, profile.officeLocation]
+              .filter(Boolean)
+              .join(" · "),
+            keywords: [profile.staffId, ...(profile.academicInterests ?? [])],
+          }
+        : null;
+    },
     label: async (db, id) =>
       (await db.staffProfile.findUnique({ where: { personId: id }, include: { person: true } }))
         ?.person.fullName ?? null,
@@ -157,6 +184,10 @@ export function registerPeopleSubjects(): void {
 
 function registerGroupSubjects(): void {
   register("group", {
+    indexDoc: async (db, id) => {
+      const group = await db.group.findUnique({ where: { id } });
+      return group ? { title: group.name, body: group.kind, keywords: [group.kind] } : null;
+    },
     label: async (db, id) => (await db.group.findUnique({ where: { id } }))?.name ?? null,
     snapshot: async (db, id) => {
       const g = await db.group.findUnique({ where: { id } });

@@ -127,6 +127,13 @@ export const QUEUES: readonly QueueSpec[] = [
     retryLimit: 2,
     expireInSeconds: 600,
   },
+  // rebuilding the search index of a department: rare, long, and one at a time
+  {
+    name: "search.reindex",
+    policy: "singleton",
+    retryLimit: 1,
+    expireInSeconds: 1800,
+  },
   // a file too large to read inside a request is read by the worker instead; the states of the
   // import are the same either way
   {

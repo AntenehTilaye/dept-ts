@@ -44,7 +44,7 @@ export function Topbar({
       )}
       <div className="flex-1" />
       {children}
-      <CommandPalette items={nav} />
+      {currentSlug ? <CommandPalette items={nav} dept={currentSlug} /> : null}
       {inbox && inboxHref ? (
         <a
           href={inboxHref}

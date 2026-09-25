@@ -73,6 +73,14 @@ A task is a record of the `task` feature — there is one task lifecycle, wherev
 
 Upgrading a database that still holds P7 tasks: run `docker compose run --rm web npx tsx prisma/scripts/backfill-task-feature-records.ts` (idempotent) **before** `prisma migrate deploy` applies `constraints_p9b` — a CHECK constraint cannot be deferred, so every task needs its record first.
 
+## Search
+
+One box over everything the department holds (`src/platform/search`). A subject becomes findable by describing itself — `indexDoc` on its SubjectRegistry registration — and `SearchIndexEntry` holds that description with a `tsvector` PostgreSQL maintains itself (weighted, `simple` rather than `english`: the corpus is Amharic and English names and codes, where stemming does more harm than good).
+
+Who may see a row is written on the row as coarse tokens (`dept:`, `role:@dept:`, `person:`, `group:`) and a person carries the same tokens, so the first gate is an array overlap a GIN index can serve. The second gate is `can()` on every hit that survives, which is the one that may be trusted: a search never shows somebody a record they could not open. `suggest` answers the command palette from trigram similarity while somebody types; `/d/[dept]/search` groups the hits by what they are.
+
+The index is kept current by outbox subscribers — everything already publishes what it changed — and rebuilt wholesale by the `search.reindex` job or by the seed, which leaves a freshly seeded department searchable from the first minute.
+
 ## Reports
 
 One rendering path for every report (`src/platform/reporting`). A report is a registration — who may run it, what it asks for, where its rows come from — and the framework turns those rows into a readable page, a workbook with typed columns, a csv with a BOM, or an A4 PDF. `department_activity`, `task_list` and `audit_extract` ship with it, one per format worth proving.

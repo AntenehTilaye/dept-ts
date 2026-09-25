@@ -76,6 +76,16 @@ export function registerAcademicSubjects(): void {
   });
 
   register("course", {
+    indexDoc: async (db, id) => {
+      const course = await db.course.findUnique({ where: { id } });
+      return course
+        ? {
+            title: `${course.code} ${course.title}`,
+            body: `${course.creditHours} credit hours`,
+            keywords: [course.code, course.courseType, course.status],
+          }
+        : null;
+    },
     label: async (db, id) => {
       const c = await db.course.findUnique({ where: { id } });
       return c ? `${c.code} ${c.title}` : null;
@@ -101,6 +111,19 @@ export function registerAcademicSubjects(): void {
   });
 
   register("course_offering", {
+    indexDoc: async (db, id) => {
+      const offering = await db.courseOffering.findUnique({
+        where: { id },
+        include: { course: { select: { code: true, title: true } }, term: { select: { name: true } } },
+      });
+      return offering
+        ? {
+            title: `${offering.course.code} ${offering.course.title}`,
+            body: offering.term.name,
+            keywords: [offering.course.code],
+          }
+        : null;
+    },
     label: async (db, id) => {
       const o = await db.courseOffering.findUnique({
         where: { id },
@@ -302,6 +325,16 @@ function registerSectionSubjects(): void {
   });
 
   register("resource", {
+    indexDoc: async (db, id) => {
+      const resource = await db.resource.findUnique({ where: { id } });
+      return resource
+        ? {
+            title: `${resource.code} ${resource.name}`,
+            body: [resource.building, resource.location].filter(Boolean).join(" "),
+            keywords: [resource.code, resource.kind],
+          }
+        : null;
+    },
     label: async (db, id) => {
       const r = await db.resource.findUnique({ where: { id } });
       return r ? `${r.code} ${r.name}` : null;

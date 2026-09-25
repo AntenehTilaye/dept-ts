@@ -1,1 +1,24 @@
-// search models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Search (design part 04 §19). One index for everything a person may find: the title and the
+// text of a subject, the facets a filter uses, and the tokens that say who may see it. The row
+// is written from the SubjectRegistry's own `indexDoc`, so a module becomes searchable by
+// describing itself rather than by writing a query. TENANT.
+
+model SearchIndexEntry {
+  subjectType  SubjectType             @map("subject_type")
+  subjectId    String                  @map("subject_id")
+  departmentId String                  @map("department_id")
+  department   Department              @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  title        String
+  bodyText     String                  @map("body_text")
+  facetsJson   Json                    @default("{}") @map("facets_json")
+  /// `dept:<id>`, `role:<key>@dept:<id>`, `person:<id>`, `group:<id>` — who may see this row.
+  aclTokens    String[]                @map("acl_tokens")
+  /// Generated column (migration `p11_search`): weighted tsvector over title and body.
+  search       Unsupported("tsvector")?
+  updatedAt    DateTime                @updatedAt @map("updated_at")
+
+  @@id([subjectType, subjectId])
+  @@index([departmentId])
+  @@index([aclTokens], type: Gin)
+  @@map("search_index_entry")
+}

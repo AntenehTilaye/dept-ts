@@ -14,6 +14,8 @@ import { seedForms } from "./seed/forms";
 import { seedAdapters } from "./seed/adapters";
 import { seedFeatures } from "./seed/features";
 import { seedReportDefinitions } from "../src/platform/reporting";
+import { rebuild as rebuildSearch } from "../src/platform/search";
+import { withTenantTx } from "../src/lib/db/tenant";
 import { bootstrap } from "../src/lib/bootstrap";
 import { stopBoss } from "../src/lib/db/boss";
 
@@ -36,6 +38,13 @@ export async function runSeed(db: PrismaClient) {
   await seedFeatures();
   await seedReportDefinitions(db);
   if (process.env.SEED_DEMO === "1") await seedDemo(db);
+
+  // a seeded department is searchable straight away: the subscribers keep the index current
+  // from here, but nothing they listen to has happened for the rows the seed just wrote
+  for (const department of await db.department.findMany({ select: { id: true } })) {
+    const result = await withTenantTx(department.id, (tx) => rebuildSearch(tx, department.id));
+    console.log(`seed: search index ${department.id} — ${result.indexed} row(s)`);
+  }
 }
 
 async function main() {
