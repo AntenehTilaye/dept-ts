@@ -14,6 +14,7 @@ import notificationDeliver from "./handlers/notification-deliver";
 import outboxDispatch from "./handlers/outbox-dispatch";
 import overdueSweep from "./handlers/overdue-sweep";
 import reminderFire from "./handlers/reminder-fire";
+import reportGenerate from "./handlers/report-generate";
 import recurrenceSpawn from "./handlers/recurrence-spawn";
 import reminderMaterialize from "./handlers/reminder-materialize";
 import retentionRun from "./handlers/retention-run";
@@ -32,6 +33,7 @@ export const HANDLERS: readonly WorkerHandler[] = [
   workflowAutoTransition,
   importParse,
   importValidate,
+  reportGenerate,
   overdueSweep,
   calendarAutotransition,
   grantReconcile,

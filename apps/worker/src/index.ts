@@ -3,6 +3,7 @@ import { startWorkerBoss } from "./boss";
 import { registerHandlers } from "./registry";
 import { registerSchedules } from "./schedules";
 import { installShutdown } from "./shutdown";
+import { closeBrowser } from "./pdf/browser";
 import { recordHeartbeat, touchHeartbeatFile } from "./handlers/worker-heartbeat";
 import { QUEUES } from "@/platform/scheduler/queues";
 import { bootstrap } from "@/lib/bootstrap";
@@ -29,7 +30,8 @@ async function main() {
   const timer = setInterval(() => touchHeartbeatFile(), 30_000);
   timer.unref();
 
-  installShutdown(boss, [async () => clearInterval(timer)]);
+  // the report renderer's Chromium outlives a job, so it is closed with the process
+  installShutdown(boss, [async () => clearInterval(timer), closeBrowser]);
   console.log("[worker] ready");
 }
 

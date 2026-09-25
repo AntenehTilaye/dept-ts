@@ -123,4 +123,19 @@ export const jsonSchemas: Record<string, ZodType> = {
   ),
   "ColumnMappingProfile.mappingsJson": z.record(z.string(), z.string()),
   "ColumnMappingProfile.headerAliasesJson": z.record(z.string(), z.array(z.string())),
+  // Reporting: what a report asks for, what one run was asked for, and the columns another
+  // system expects (src/platform/reporting owns the shapes).
+  "ReportDefinition.parametersSchemaJson": z.record(z.string(), z.unknown()),
+  "ReportDefinition.scheduleSpecJson": z.record(z.string(), z.unknown()).nullable(),
+  "GeneratedReport.paramsJson": z.record(z.string(), z.unknown()),
+  "ExportFormatSpec.columnsJson": z.array(
+    z.object({
+      header: z.string(),
+      sourcePath: z.string(),
+      transform: z.string().optional(),
+      format: z.string().optional(),
+      order: z.number().int(),
+      required: z.boolean().optional(),
+    }),
+  ),
 };

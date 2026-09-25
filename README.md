@@ -73,6 +73,12 @@ A task is a record of the `task` feature — there is one task lifecycle, wherev
 
 Upgrading a database that still holds P7 tasks: run `docker compose run --rm web npx tsx prisma/scripts/backfill-task-feature-records.ts` (idempotent) **before** `prisma migrate deploy` applies `constraints_p9b` — a CHECK constraint cannot be deferred, so every task needs its record first.
 
+## Reports
+
+One rendering path for every report (`src/platform/reporting`). A report is a registration — who may run it, what it asks for, where its rows come from — and the framework turns those rows into a readable page, a workbook with typed columns, a csv with a BOM, or an A4 PDF. `department_activity`, `task_list` and `audit_extract` ship with it, one per format worth proving.
+
+HTML and CSV are rendered in the request; a PDF needs a browser and a workbook can be large, so both are a `report.generate` job, deduplicated on the report, its parameters and the format. The worker keeps one Chromium per process, relaunches it if it dies and limits concurrent renders (`PDF_CONCURRENCY`); a failure is written onto the run so the page can say what went wrong rather than spinning. Whatever the format, the output is stored through the document service with a `generated_output` link, so downloads are the same audited, signed, five-minute links as every other file. `/d/[dept]/reports` lists what the reader may run and what has been generated lately. `ExportFormatSpec` (a versioned description of a file another system expects, with a golden sample to diff against) is in place for the load phase.
+
 ## Importing spreadsheets
 
 Every spreadsheet a department is sent goes through one staged pipeline (`src/platform/import`), because the hard parts are the same each time: read the file, work out which column is which, say exactly what is wrong with which row, let somebody fix it, and only then write. A batch is a record of the seeded `import_batch` feature, so the staging IS a workflow — `uploaded` → `parsed` → `validated` → committed, with `discarded` as the way out — and the pipeline supplies only the work each state does. `/d/[dept]/imports` is the readable URL of the generic runtime, and a section card links straight into a roster import of that section.
