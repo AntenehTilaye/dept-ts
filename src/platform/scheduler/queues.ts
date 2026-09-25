@@ -119,6 +119,20 @@ export const QUEUES: readonly QueueSpec[] = [
     expireInSeconds: 600,
     cron: "*/15 * * * *",
   },
+  // a file too large to read inside a request is read by the worker instead; the states of the
+  // import are the same either way
+  {
+    name: "import.parse",
+    policy: "standard",
+    retryLimit: 1,
+    expireInSeconds: 900,
+  },
+  {
+    name: "import.validate",
+    policy: "standard",
+    retryLimit: 1,
+    expireInSeconds: 900,
+  },
   {
     name: "retention.run",
     policy: "short",

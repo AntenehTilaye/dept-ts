@@ -33,3 +33,4 @@ uploads/
 .idea/
 .DS_Store
 Thumbs.db
+tests/fixtures/files/

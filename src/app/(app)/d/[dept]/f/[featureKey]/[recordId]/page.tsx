@@ -8,6 +8,7 @@ import { featureRecord } from "@/features/runtime/queries";
 import { FeatureRecordShell } from "@/features/runtime/FeatureRecordShell";
 import { SubjectDocuments } from "@/components/documents/SubjectDocuments";
 import { SubjectThread } from "@/components/thread/SubjectThread";
+import { registerRecordSurfaces } from "@/modules/record-surfaces";
 import { surfaceFor } from "@/modules/surfaces";
 import { TaskActionsPanel } from "@/modules/tasks/TaskActionsPanel";
 import { Button } from "@/components/ui/button";
@@ -54,7 +55,8 @@ export default async function RecordPage(
   const subject = { subjectType: "feature_record", subjectId: recordId };
   const base = `/d/${dept}/f/${featureKey}/${recordId}`;
   const timeline = await history(db, subject, 50);
-  // what the module behind this feature adds: a task's deliverable slots and acknowledgements
+  // what the module behind this feature adds: a task's deliverable slots, an import's rows
+  registerRecordSurfaces();
   const extras = (await surfaceFor(featureKey)?.recordExtras?.({ ctx, db, record })) ?? {};
 
   return (
@@ -83,6 +85,7 @@ export default async function RecordPage(
       slots={extras.slots}
       slotSubject={extras.slotSubject}
       canUploadSlots={extras.canUploadSlots}
+      slotsLabel={extras.slotsLabel}
       acknowledgements={extras.acknowledgements}
       documents={<SubjectDocuments ctx={ctx} db={db} subject={subject} path={base} />}
       comments={<SubjectThread ctx={ctx} db={db} subject={subject} path={base} />}

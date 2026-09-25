@@ -614,6 +614,8 @@ enum JobKind {
   portfolio_provision
   report_generate
   feature_migrate
+  import_parse
+  import_validate
   overdue_sweep
   grant_reconcile
   calendar_autotransition

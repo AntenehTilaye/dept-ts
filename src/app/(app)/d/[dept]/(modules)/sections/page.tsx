@@ -1,3 +1,6 @@
+import Link from "next/link";
+import type { Route } from "next";
+import { UploadIcon } from "lucide-react";
 import { dbOf, pageContextCan } from "@/lib/auth/page";
 import { listPrograms } from "@/platform/academic/courses";
 import { representativesOf } from "@/platform/people/representatives";
@@ -7,7 +10,14 @@ import { Field, SelectField } from "@/components/forms/Field";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   addStudentToSectionForm,
   assignRepresentativeForm,
@@ -84,6 +94,19 @@ export default async function SectionsPage(props: PageProps<"/d/[dept]/sections"
                 {section.program.code} · year {section.yearLevel} · {students.length} students
                 {section.capacity ? ` / ${section.capacity}` : ""}
               </CardDescription>
+              <CardAction>
+                {/* the roster of this section is a spreadsheet somebody was sent; this is where
+                    they would be standing when they want to load it */}
+                <Button asChild variant="outline" size="sm">
+                  <Link
+                    href={
+                      `/d/${dept}/imports/new?preset=roster&parentType=section&parentId=${section.id}` as Route
+                    }
+                  >
+                    <UploadIcon /> Import a roster
+                  </Link>
+                </Button>
+              </CardAction>
             </CardHeader>
             <CardContent className="flex flex-col gap-3 text-sm">
               <div data-testid="representatives">

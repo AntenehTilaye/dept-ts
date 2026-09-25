@@ -47,6 +47,10 @@ export const PERMISSIONS: PermissionDef[] = [
     approve: "Approve course portfolios",
   }),
   ...keys("assessment", { import: "Upload assessment results", view: "View assessment results" }),
+  ...keys("import", {
+    manage: "Upload spreadsheets and commit them into the department",
+    view: "See what has been imported",
+  }),
   ...keys("cqi", { manage: "Manage CQI reports and actions" }),
   ...keys("evaluation", {
     create: "Create staff evaluations",
@@ -194,6 +198,7 @@ export const MATRIX: MatrixRow[] = [
     "staff.view",
     "resource.view",
     "document.read",
+    "import.view",
     "lab.view_own",
     "invigilation.view_own",
   ]),

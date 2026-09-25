@@ -105,6 +105,14 @@
       "table": "group_membership"
     },
     {
+      "model": "ImportBatch",
+      "table": "import_batch"
+    },
+    {
+      "model": "ImportRow",
+      "table": "import_row"
+    },
+    {
       "model": "Notification",
       "table": "notification"
     },
@@ -197,6 +205,10 @@
     {
       "model": "AuditEvent",
       "table": "audit_event"
+    },
+    {
+      "model": "ColumnMappingProfile",
+      "table": "column_mapping_profile"
     },
     {
       "model": "DomainEvent",
@@ -305,5 +317,5 @@
       "table": "verification"
     }
   ],
-  "hash": "cc80c004c2e0a2f5efd4093b69a92442a3f7d4d99dab056ad175ff0fbb7fe38a"
+  "hash": "ad618c1a7883327f3b4b2d463acb3cf7987d32231901b36a30669d302327f510"
 }

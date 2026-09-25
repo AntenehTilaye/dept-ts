@@ -57,7 +57,7 @@ export function ActionBar({
             title={a.disabledReason}
             onClick={() => (a.requiredComment || a.requiredFields.length ? setOpen(a) : run(a))}
           >
-            {a.action}
+            {a.label ?? a.action}
             {a.branchKey ? ` (${a.branchKey})` : ""}
           </Button>
         ))}
@@ -73,7 +73,7 @@ export function ActionBar({
             run(open, new FormData(e.currentTarget));
           }}
         >
-          <p className="text-sm font-medium">Confirm: {open.action}</p>
+          <p className="text-sm font-medium">Confirm: {open.label ?? open.action}</p>
           {open.requiredFields.map((f) => (
             <div key={f} className="grid gap-1">
               <Label htmlFor={`field-${f}`}>{f}</Label>

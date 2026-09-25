@@ -75,6 +75,8 @@ export interface ApplyInput {
 export interface AvailableAction {
   transitionKey: string;
   action: string;
+  /** What the definition calls this action, when something upstream knows ("Read the file"). */
+  label?: string;
   to: string;
   branchKey?: string;
   system: boolean;

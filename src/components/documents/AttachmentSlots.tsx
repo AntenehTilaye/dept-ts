@@ -9,6 +9,8 @@ export interface SlotCard {
   satisfied: boolean;
   documentId?: string;
   documentTitle?: string;
+  /** What the upload is to this subject: a deliverable unless the slot says otherwise. */
+  linkRole?: string;
 }
 
 /**
@@ -68,7 +70,11 @@ export function AttachmentSlots({
               label={s.satisfied ? "Replace" : "Upload"}
               {...(s.satisfied && s.documentId
                 ? { documentId: s.documentId }
-                : { links: [{ ...subject, linkRole: "deliverable", slotKey: s.slotKey }] })}
+                : {
+                    links: [
+                      { ...subject, linkRole: s.linkRole ?? "deliverable", slotKey: s.slotKey },
+                    ],
+                  })}
             />
           ) : null}
         </li>

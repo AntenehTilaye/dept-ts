@@ -80,6 +80,9 @@ model Department {
   featureMigrations      FeatureMigration[]
   availabilityPolicies   AvailabilityPolicy[]
   availabilityBlocks     AvailabilityBlock[]
+  importBatches          ImportBatch[]
+  importRows             ImportRow[]
+  mappingProfiles        ColumnMappingProfile[]
 
   @@map("department")
 }

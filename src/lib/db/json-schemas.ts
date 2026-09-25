@@ -110,4 +110,17 @@ export const jsonSchemas: Record<string, ZodType> = {
   "AvailabilityPolicy.blackoutPeriodsJson": z.array(
     z.object({ fromAt: z.string(), toAt: z.string(), reason: z.string().optional() }),
   ),
+  // Import: the summary the list and preview read, and one row as it arrived, as it was
+  // understood and what is wrong with it (src/platform/import/pipeline.ts owns the shapes).
+  "ImportBatch.summaryJson": z.record(z.string(), z.unknown()),
+  "ImportRow.rawJson": z.record(z.string(), z.unknown()),
+  "ImportRow.normalizedJson": z.record(z.string(), z.unknown()).nullable(),
+  "ImportRow.errorsJson": z.array(
+    z.object({ code: z.string(), field: z.string().optional(), message: z.string() }),
+  ),
+  "ImportRow.warningsJson": z.array(
+    z.object({ code: z.string(), field: z.string().optional(), message: z.string() }),
+  ),
+  "ColumnMappingProfile.mappingsJson": z.record(z.string(), z.string()),
+  "ColumnMappingProfile.headerAliasesJson": z.record(z.string(), z.array(z.string())),
 };

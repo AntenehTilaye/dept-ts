@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
       { source: "/d/:dept/tasks/:path*", destination: "/d/:dept/f/task/:path*" },
       { source: "/d/:dept/cases", destination: "/d/:dept/f/case" },
       { source: "/d/:dept/cases/:path*", destination: "/d/:dept/f/case/:path*" },
+      { source: "/d/:dept/imports", destination: "/d/:dept/f/import_batch" },
+      { source: "/d/:dept/imports/:path*", destination: "/d/:dept/f/import_batch/:path*" },
     ];
   },
 };
