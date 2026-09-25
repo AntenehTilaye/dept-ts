@@ -13,12 +13,15 @@ model SearchIndexEntry {
   facetsJson   Json                    @default("{}") @map("facets_json")
   /// `dept:<id>`, `role:<key>@dept:<id>`, `person:<id>`, `group:<id>` — who may see this row.
   aclTokens    String[]                @map("acl_tokens")
-  /// Generated column (migration `p11_search`): weighted tsvector over title and body.
-  search       Unsupported("tsvector")?
+  /// Generated column (migration `p11_search`): weighted tsvector over title and body. The
+  /// database computes it, which is what `dbgenerated()` tells Prisma so it leaves it alone.
+  search       Unsupported("tsvector")? @default(dbgenerated())
   updatedAt    DateTime                @updatedAt @map("updated_at")
 
   @@id([subjectType, subjectId])
   @@index([departmentId])
   @@index([aclTokens], type: Gin)
+  @@index([search], type: Gin)
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "search_index_entry_title_trgm")
   @@map("search_index_entry")
 }

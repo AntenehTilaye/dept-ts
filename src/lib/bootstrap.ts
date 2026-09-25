@@ -23,6 +23,11 @@ import { installAvailabilityFeeds, registerAvailabilitySubjects } from "@/platfo
 import { installImportKinds, registerImportSubjects } from "@/platform/import";
 import { installSystemReports, registerReportingSubjects } from "@/platform/reporting";
 import { installSearchPermissions, installSearchSubscribers } from "@/platform/search";
+import {
+  installBuiltInProjections,
+  installBuiltInWidgets,
+  installDashboardSubscribers,
+} from "@/platform/dashboard";
 import { registerModules } from "@/modules";
 
 // Process-wide registrations, loaded once by src/instrumentation.ts (web) and the worker entry
@@ -60,6 +65,10 @@ export function bootstrap(): void {
   installSystemReports();
   installSearchSubscribers();
   installSearchPermissions();
+  // projections declare the events they need, so they are registered before the subscriber
+  installBuiltInProjections();
+  installBuiltInWidgets();
+  installDashboardSubscribers();
   registerModules();
   registerDocumentRetention();
   setPeriodDependentsResolver(async (db, periodId) =>

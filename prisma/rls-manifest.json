@@ -57,6 +57,10 @@
       "table": "course_offering"
     },
     {
+      "model": "DashboardProjection",
+      "table": "dashboard_projection"
+    },
+    {
       "model": "DepartmentPerson",
       "table": "department_person"
     },
@@ -333,5 +337,5 @@
       "table": "verification"
     }
   ],
-  "hash": "c023d6d262c3d40f9878822ec4da5031df070e3db76926065563d8e11b94cd30"
+  "hash": "5a6c7681dd0d477c72d82fc4abc8ab908f08a43dc7a47fb3eb49059f8d4168f8"
 }

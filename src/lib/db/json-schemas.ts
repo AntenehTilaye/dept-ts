@@ -140,4 +140,7 @@ export const jsonSchemas: Record<string, ZodType> = {
   ),
   // Search: the facets a filter narrows by (module, state, year, ...).
   "SearchIndexEntry.facetsJson": z.record(z.string(), z.unknown()),
+  // Dashboard: what a projection row is about, and the numbers it holds.
+  "DashboardProjection.dimensionsJson": z.record(z.string(), z.unknown()),
+  "DashboardProjection.valuesJson": z.record(z.string(), z.number()),
 };

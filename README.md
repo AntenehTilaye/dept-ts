@@ -73,6 +73,12 @@ A task is a record of the `task` feature — there is one task lifecycle, wherev
 
 Upgrading a database that still holds P7 tasks: run `docker compose run --rm web npx tsx prisma/scripts/backfill-task-feature-records.ts` (idempotent) **before** `prisma migrate deploy` applies `constraints_p9b` — a CHECK constraint cannot be deferred, so every task needs its record first.
 
+## Dashboards
+
+A dashboard tile has to answer instantly, and the question behind it ("who is carrying what") is a scan of several tables — so the answer is kept. A **projection** declares the events after which it may be stale and how to rebuild itself from the tables; the outbox keeps it current inside the dispatcher's own transaction (so a replayed event writes the same row rather than double-counting), and `projection.rebuild`, `scripts/rebuild-projections.ts` or the seed rebuild it wholesale. Because it is derived, a rebuild costs time and never correctness, which is why /admin/jobs offers the button.
+
+A **widget** knows what it needs and who may see it; a **layout** says which widgets a role sees and in what order. `/d/[dept]` is that page: a head opens it to see the department (who is carrying what, what each process has open, how the campaigns are going), an instructor to see their own week. A module adds to the page by registering a widget — and, if it wants, a projection behind it — rather than by editing the page.
+
 ## Search
 
 One box over everything the department holds (`src/platform/search`). A subject becomes findable by describing itself — `indexDoc` on its SubjectRegistry registration — and `SearchIndexEntry` holds that description with a `tsvector` PostgreSQL maintains itself (weighted, `simple` rather than `english`: the corpus is Amharic and English names and codes, where stemming does more harm than good).
@@ -112,3 +118,16 @@ A campaign (`src/platform/campaign`) is a windowed run of a form over an audienc
 ## Worker and jobs
 
 The `worker` service owns the `pgboss` schema, creates every queue of `src/platform/scheduler/queues.ts` at boot and registers the crons (`APP_TIMEZONE`, default `Africa/Addis_Ababa`). The web process only sends jobs, always on the caller's Prisma transaction (`enqueue(tx, ...)`) so a rolled-back action leaves no job behind; `/admin/jobs` shows the ledger, the outbox backlog and the worker heartbeat, `/admin/reminders` the schedules and a dry run, `/admin/templates` the versioned mustache templates.
+
+## Kernel complete: how to add a module
+
+Everything above is the kernel. From here a module is a set of registrations, not a new way of doing anything:
+
+1. **Tables** — add the models to a `prisma/schema/<module>.prisma` part, register every `Json` column in `src/lib/db/json-schemas.ts`, generate the migration, append the RLS policies with `prisma/scripts/gen-rls.ts --append`, and add any hand-written constraint in a `constraints_<phase>` migration.
+2. **Subjects** — `register(...)` in the SubjectRegistry: a label, a snapshot, the context that gives it permissions, the relationships a person can have to it, the variables its templates may use, `indexDoc` if it should be findable, and `url` so a notification can link to it.
+3. **The process** — a `FeatureDefinition` seeded in `prisma/seed/features`, with presets for its kinds. The compiler turns it into a workflow, forms, task templates, reminders and permissions; nothing hand-writes a state machine.
+4. **Adapters** — what the definition names but cannot express: guards, effects, `on_enter`/`on_exit` hooks, a backing row, source bindings, computed fields. Register them through `src/modules/register.ts` so they exist both in the AdapterRegistry (validation and the admin screens) and in the engine that calls them.
+5. **Surfaces** — what the generic record page cannot know: a task's deliverable slots, an import's rows. Registered by the page (`src/modules/record-surfaces.ts`), because surfaces are React.
+6. **Reports, projections and widgets** — `registerReport`, `registerProjection`, `registerWidget` + a layout entry. All three are data the framework renders; none of them is a page.
+7. **The rest of the seams** — templates (`prisma/seed/templates`), reminder schedules, permissions in `src/platform/identity/permissions-matrix.ts`, queues in `src/platform/scheduler/queues.ts` with a handler in `apps/worker/src/handlers`, import kinds (a validator and a committer), and a rewrite in `next.config.ts` if the feature deserves a readable URL.
+8. **Tests** — unit for the pure parts, integration for anything that touches the database (through the real permission checks), a worker test if it has a job, and one Playwright journey that a person would recognise.

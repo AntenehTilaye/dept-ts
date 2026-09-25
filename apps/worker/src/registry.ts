@@ -12,6 +12,7 @@ import importParse from "./handlers/import-parse";
 import importValidate from "./handlers/import-validate";
 import notificationDeliver from "./handlers/notification-deliver";
 import outboxDispatch from "./handlers/outbox-dispatch";
+import projectionRebuild from "./handlers/projection-rebuild";
 import overdueSweep from "./handlers/overdue-sweep";
 import reminderFire from "./handlers/reminder-fire";
 import reportGenerate from "./handlers/report-generate";
@@ -36,6 +37,7 @@ export const HANDLERS: readonly WorkerHandler[] = [
   importValidate,
   reportGenerate,
   searchReindex,
+  projectionRebuild,
   overdueSweep,
   calendarAutotransition,
   grantReconcile,

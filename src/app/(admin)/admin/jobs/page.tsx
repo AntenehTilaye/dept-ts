@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cancelJobForm, replayEventForm, retryJobForm } from "./actions";
+import { cancelJobForm, rebuildForm, replayEventForm, retryJobForm } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +56,34 @@ export default async function JobsPage(props: PageProps<"/admin/jobs">) {
       />
       <div className="flex flex-col gap-6">
         <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <CardTitle>Rebuilds</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2" data-testid="rebuilds">
+              <ActionForm
+                action={rebuildForm}
+                submitLabel="Rebuild the search index"
+                successMessage="Queued; the worker rebuilds it."
+                variant="outline"
+                size="sm"
+                className="inline"
+              >
+                <input type="hidden" name="what" value="search" />
+              </ActionForm>
+              <ActionForm
+                action={rebuildForm}
+                submitLabel="Rebuild the dashboards"
+                successMessage="Queued; the worker rebuilds them."
+                variant="outline"
+                size="sm"
+                className="inline"
+              >
+                <input type="hidden" name="what" value="projections" />
+              </ActionForm>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Worker</CardTitle>

@@ -127,6 +127,13 @@ export const QUEUES: readonly QueueSpec[] = [
     retryLimit: 2,
     expireInSeconds: 600,
   },
+  // rebuilding a department's dashboard projections: rare, long, and one at a time
+  {
+    name: "projection.rebuild",
+    policy: "singleton",
+    retryLimit: 1,
+    expireInSeconds: 1800,
+  },
   // rebuilding the search index of a department: rare, long, and one at a time
   {
     name: "search.reindex",

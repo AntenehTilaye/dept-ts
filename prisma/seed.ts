@@ -15,6 +15,7 @@ import { seedAdapters } from "./seed/adapters";
 import { seedFeatures } from "./seed/features";
 import { seedReportDefinitions } from "../src/platform/reporting";
 import { rebuild as rebuildSearch } from "../src/platform/search";
+import { rebuildProjections } from "../src/platform/dashboard";
 import { withTenantTx } from "../src/lib/db/tenant";
 import { bootstrap } from "../src/lib/bootstrap";
 import { stopBoss } from "../src/lib/db/boss";
@@ -44,6 +45,14 @@ export async function runSeed(db: PrismaClient) {
   for (const department of await db.department.findMany({ select: { id: true } })) {
     const result = await withTenantTx(department.id, (tx) => rebuildSearch(tx, department.id));
     console.log(`seed: search index ${department.id} — ${result.indexed} row(s)`);
+    // the dashboards are derived the same way, and for the same reason: nothing the projections
+    // listen to has happened for the rows the seed just wrote
+    const projections = await withTenantTx(department.id, (tx) =>
+      rebuildProjections(tx, department.id),
+    );
+    console.log(
+      `seed: projections ${department.id} — ${projections.map((p) => `${p.projectionKey}=${p.rows}`).join(", ")}`,
+    );
   }
 }
 

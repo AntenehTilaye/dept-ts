@@ -86,6 +86,7 @@ model Course {
   offerings CourseOffering[]
 
   @@unique([departmentId, code])
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "course_title_trgm")
   @@map("course")
 }
 
