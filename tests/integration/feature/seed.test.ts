@@ -1,10 +1,12 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { bootstrap } from "@/lib/bootstrap";
 import { withTenantBypass } from "@/lib/db/tenant";
-import { adapterHooks } from "@/platform/feature";
+import { adapterHooks, allLocks, lockedPathsChanged } from "@/platform/feature";
 import { seedFeature } from "@/platform/feature/seed";
 import { FeatureDefinitionSchema, type FeatureDefinitionInput, type StepDefInput } from "@/platform/feature/schema";
 import { SEED_FEATURES } from "../../../prisma/seed/features";
+import { committee } from "../../../prisma/seed/features/committee";
+import { committeeReport } from "../../../prisma/seed/features/committee_report";
 import { genericRequest } from "../../../prisma/seed/features/generic_request";
 import { migratorDb } from "../../setup/db";
 
@@ -138,6 +140,65 @@ describe("seeding the built-in features", () => {
     await withTenantBypass(bypass, "restore", (tx) => seedFeature(tx, genericRequest));
   });
 
+  it("refuses a locked edit to a module feature, and publishes it with its module's rows", async () => {
+    const definition = await definitionOf("committee_report");
+    const version = await migratorDb.featureDefinitionVersion.findUniqueOrThrow({
+      where: { id: definition.activeVersionId! },
+    });
+    expect(version.status).toBe("published");
+    const parsed = FeatureDefinitionSchema.parse(version.json);
+
+    // what the code owns in this definition: the rows it names have to exist in TypeScript
+    const locks = allLocks(parsed, true);
+    expect(locks).toContain("/record/backing");
+    expect(locks).toContain("/steps/0/actions/0/guards");
+    expect(locks).toContain("/steps/0/actions/0/effects");
+
+    // an administrator may rename the step ...
+    const renamed = structuredClone(parsed) as FeatureDefinitionInput;
+    (renamed.steps as StepDefInput[])[0]!.label = "Being drafted";
+    expect(lockedPathsChanged(parsed, renamed, locks)).toEqual([]);
+
+    // ... but not take the membership guard off the submission
+    const ungarded = structuredClone(parsed) as FeatureDefinitionInput;
+    (ungarded.steps as StepDefInput[])[0]!.actions[0]!.guards = [];
+    const changed = lockedPathsChanged(parsed, ungarded, locks);
+    expect(changed.map((c) => c.path)).toContain("/steps/0/actions/0/guards");
+  });
+
+  it("gives the committee features the workflow, the forms and the permissions they declare", async () => {
+    for (const key of ["committee", "committee_report"]) {
+      const definition = await definitionOf(key);
+      const version = await migratorDb.featureDefinitionVersion.findUniqueOrThrow({
+        where: { id: definition.activeVersionId! },
+      });
+      const workflow = await migratorDb.workflowDefinition.findUniqueOrThrow({
+        where: { id: version.workflowDefinitionId! },
+      });
+      expect(workflow.key).toBe(`feature:${key}`);
+      expect(workflow.status).toBe("active");
+    }
+    // the report's own questions are a published form, so a record pins the version it was written in
+    const form = await migratorDb.formDefinition.findFirst({
+      where: { key: "committee_report.draft", status: "published" },
+    });
+    expect(form).not.toBeNull();
+    // and the two explicit permission keys are the module's, not generated ones
+    for (const key of ["committee.report.submit", "committee.manage"])
+      expect(await migratorDb.permission.findUnique({ where: { key } })).not.toBeNull();
+  });
+
+  it("re-seeds the committee features without writing a new version", async () => {
+    const before = await migratorDb.featureDefinitionVersion.count();
+    for (const definition of [committee, committeeReport]) {
+      const outcome = await withTenantBypass(bypass, "re-seed", (tx) =>
+        seedFeature(tx, definition),
+      );
+      expect(outcome.action).toBe("unchanged");
+    }
+    expect(await migratorDb.featureDefinitionVersion.count()).toBe(before);
+  });
+
   it("registers every adapter a seeded definition names, with the hook it is used as", async () => {
     const hooks = adapterHooks();
     const rows = await migratorDb.adapterRegistration.findMany();
@@ -147,6 +208,9 @@ describe("seeding the built-in features", () => {
     expect(byKey.get("task.requiredDeliverablesLinked")).toBe("guard");
     expect(byKey.get("task.setCompletedAt")).toBe("effect");
     expect(byKey.get("case.subscribeIntervalNudge")).toBe("on_enter");
+    expect(byKey.get("committee.backing")).toBe("backing");
+    expect(byKey.get("committee.memberGuard")).toBe("guard");
+    expect(byKey.get("committee.escalateIssueToCase")).toBe("effect");
 
     for (const [key, hook] of Object.entries(hooks)) expect(byKey.get(key)).toBe(hook);
   });

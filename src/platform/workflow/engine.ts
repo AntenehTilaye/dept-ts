@@ -84,6 +84,13 @@ export interface AvailableAction {
   requiredFields: string[];
   requiredAttachments: string[];
   enabled: boolean;
+  /**
+   * Whether this person is allowed to take this action at all, as opposed to right now: the
+   * permission and the actor rules said yes, and only the inputs or a guard are in the way.
+   * A page uses it to decide whether somebody may work on a step — asking `enabled` there would
+   * lock the form that is supposed to supply the very answer it is waiting for.
+   */
+  actorAllowed: boolean;
   disabledReason?: string;
 }
 
@@ -197,7 +204,8 @@ export async function availableActions(
     snapshotOf(instance),
   )) {
     if (t.system) continue;
-    let reason = await permissionOk(tx, t, actor, instance);
+    const actorReason = await permissionOk(tx, t, actor, instance);
+    let reason = actorReason;
     if (!reason) {
       for (const g of t.guards) {
         const v = await evaluateGuard(g, guardContext(tx, def, instance, t, actor, { branchKey }));
@@ -217,6 +225,7 @@ export async function availableActions(
       requiredFields: t.requiredFields,
       requiredAttachments: t.requiredAttachments,
       enabled: !reason,
+      actorAllowed: !actorReason,
       ...(reason ? { disabledReason: reason } : {}),
     });
   }

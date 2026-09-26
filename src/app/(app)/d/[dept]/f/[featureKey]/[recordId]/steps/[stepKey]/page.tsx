@@ -59,11 +59,15 @@ export default async function StepPage(
       kind: action.kind,
       requiresComment: action.requiresComment,
       allowed: action.allowed,
+      actorAllowed: action.actorAllowed,
       reason: action.reason,
       confirm: action.confirm,
     }));
 
-  const readOnly = !instance || instance.status !== "active" || !actions.some((a) => a.allowed);
+  // whoever may act on this step may write in it: an action disabled because an answer is
+  // missing is waiting for this form, so locking the form would be a deadlock
+  const readOnly =
+    !instance || instance.status !== "active" || !actions.some((a) => a.actorAllowed);
   const stepSubject = instance
     ? { subjectType: "feature_step_instance", subjectId: instance.id }
     : null;

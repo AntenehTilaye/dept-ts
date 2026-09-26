@@ -1,5 +1,6 @@
+import { globalSingleton } from "../../lib/singleton";
 import type { Db } from "../../lib/db/types";
-import { index, INDEXED_TYPES, isIndexed } from "./indexer";
+import { addIndexedType, index, indexedTypes, isIndexed } from "./indexer";
 
 // Building the index from scratch: after a deployment that changes what a subject says about
 // itself, or after somebody restores a backup. It reads the same rows the incremental path
@@ -50,15 +51,24 @@ const LOADERS: Record<string, Loader> = {
     (await db.resource.findMany({ where: { departmentId }, select: { id: true } })).map((r) => r.id),
 };
 
+// A module's own types: registering the loader is also what makes the type indexable, because
+// there is no sense in a searchable type nothing can enumerate.
+const sources = globalSingleton("search-sources", () => new Map<string, Loader>());
+
+export function registerSearchSource(subjectType: string, loader: Loader): void {
+  sources.set(subjectType, loader);
+  addIndexedType(subjectType);
+}
+
 export async function rebuild(
   db: Db,
   departmentId: string,
-  types: string[] = [...INDEXED_TYPES],
+  types: string[] = indexedTypes(),
 ): Promise<RebuildResult> {
   const out: RebuildResult = { indexed: 0, skipped: 0, byType: {} };
   for (const subjectType of types) {
     if (!isIndexed(subjectType)) continue;
-    const loader = LOADERS[subjectType];
+    const loader = LOADERS[subjectType] ?? sources.get(subjectType);
     if (!loader) continue;
     const ids = await loader(db, departmentId);
     // the rows of this type are rewritten wholesale, so a subject that is gone leaves no hit

@@ -48,19 +48,26 @@ export function ActionBar({
   return (
     <div className="flex flex-col gap-3" data-testid="action-bar">
       <div className="flex flex-wrap gap-2">
-        {actions.map((a) => (
+        {actions.map((a) => {
+          // an action that asks for a comment or a field opens a sheet to collect it, so it is
+          // live as long as this person may take it: refusing it for the very input the sheet
+          // exists to gather would leave a button nobody can ever press
+          const collects = a.requiredComment || a.requiredFields.length > 0;
+          const ready = collects ? a.actorAllowed : a.enabled;
+          return (
           <Button
             key={`${a.transitionKey}:${a.branchKey ?? ""}`}
-            variant={a.enabled ? "default" : "outline"}
+            variant={ready ? "default" : "outline"}
             size="sm"
-            disabled={!a.enabled || pending}
+            disabled={!ready || pending}
             title={a.disabledReason}
-            onClick={() => (a.requiredComment || a.requiredFields.length ? setOpen(a) : run(a))}
+            onClick={() => (collects ? setOpen(a) : run(a))}
           >
             {a.label ?? a.action}
             {a.branchKey ? ` (${a.branchKey})` : ""}
           </Button>
-        ))}
+          );
+        })}
         {actions.length === 0 ? (
           <span className="text-sm text-muted-foreground">No actions available.</span>
         ) : null}

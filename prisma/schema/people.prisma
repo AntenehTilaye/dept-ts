@@ -32,6 +32,8 @@ model Person {
   campaignInvitations  CampaignInvitation[]
   featureRecords       FeatureRecord[]      @relation("RecordOwner")
   availabilityPolicies AvailabilityPolicy[] @relation("PolicyOwner")
+  chairedCommittees    Committee[]          @relation("CommitteeChair")
+  committeeReports     CommitteeReport[]    @relation("CommitteeReportAuthor")
 
   @@index([email])
   @@index([fullName])
@@ -222,9 +224,10 @@ model Group {
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
-  members GroupMembership[]
-  section Section?
-  threads Thread[]
+  members   GroupMembership[]
+  section   Section?
+  threads   Thread[]
+  committee Committee?
 
   @@index([departmentId, kind, status])
   @@index([contextType, contextId])

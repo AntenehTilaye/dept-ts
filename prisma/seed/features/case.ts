@@ -24,7 +24,7 @@ export const caseFeature: FeatureDefinitionInput = {
     required: false,
     listUnderParent: true,
     createFromParent: true,
-    allowedTypes: ["thread", "committee", "course_offering", "person"],
+    allowedTypes: ["thread", "committee", "course_offering", "person", "feature_record"],
   },
   record: {
     numberPrefix: "C",

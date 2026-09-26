@@ -49,6 +49,14 @@
       "table": "comment"
     },
     {
+      "model": "Committee",
+      "table": "committee"
+    },
+    {
+      "model": "CommitteeReport",
+      "table": "committee_report"
+    },
+    {
       "model": "Course",
       "table": "course"
     },
@@ -337,5 +345,5 @@
       "table": "verification"
     }
   ],
-  "hash": "5a6c7681dd0d477c72d82fc4abc8ab908f08a43dc7a47fb3eb49059f8d4168f8"
+  "hash": "92046de024e155adc6475b6b935d0f26e85f9e2de392e5f55120f1e116b047e1"
 }

@@ -1,7 +1,7 @@
 import { globalSingleton } from "../../../lib/singleton";
 import type { Db } from "../../../lib/db/types";
 import type { Actor } from "../../identity/can";
-import { listFor } from "../../document/service";
+
 import { relationships as subjectRelationships, isRegistered } from "../../subject-registry";
 import { registerGuard, type GuardContext } from "../../workflow/guards";
 import { registerEffect, type EffectContext } from "../../workflow/effects";
@@ -250,12 +250,25 @@ export async function stepComplete(ctx: GuardContext): Promise<GuardVerdict> {
     if (missing.length) return { ok: false, reason: `missing answers: ${missing.join(", ")}` };
   }
 
-  if (t.requiredAttachments.length && step && ctx.actor) {
-    const ref = { subjectType: "feature_step_instance", subjectId: step.id };
-    for (const slotKey of t.requiredAttachments) {
-      const documents = await listFor(ctx.tx, ctx.actor, ref, { linkRole: "deliverable", slotKey });
-      if (!documents.length) return { ok: false, reason: `"${slotKey}" has not been uploaded yet` };
-    }
+  if (t.requiredAttachments.length) {
+    // whether the paper is there is a fact about the slot, not about this actor's reading
+    // rights, and a slot may be filled on the step or on the record — both are the same slot
+    const links = await ctx.tx.documentLink.findMany({
+      where: {
+        slotKey: { in: t.requiredAttachments },
+        OR: [
+          { subjectType: "feature_record" as const, subjectId: ctx.instance.subjectId },
+          ...(step
+            ? [{ subjectType: "feature_step_instance" as const, subjectId: step.id }]
+            : []),
+        ],
+      },
+      select: { slotKey: true },
+    });
+    const filled = new Set(links.map((link) => link.slotKey));
+    const missing = t.requiredAttachments.filter((slotKey) => !filled.has(slotKey));
+    if (missing.length)
+      return { ok: false, reason: `"${missing[0]}" has not been uploaded yet` };
   }
   return true;
 }
