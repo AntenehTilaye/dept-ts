@@ -2,32 +2,50 @@ import type { Db } from "../../lib/db/types";
 
 // CourseOffering / SectionOffering: idempotent ensure operations and the assessment locks.
 
+/**
+ * The offering of a course in a term, created if it is not there yet.
+ *
+ * Every offering is a `course_offering` record, so bringing one into being needs the record it is
+ * the life of: the feature's backing adapter passes `featureRecordId`, and nothing else creates an
+ * offering row. Callers that want a new offering ask the runtime for a record instead
+ * (`provisionOffering` in the assessment module), which comes back here through the adapter.
+ */
 export async function ensureOffering(
   db: Db,
   departmentId: string,
-  input: { courseId: string; termId: string; coordinatorPersonId?: string | null },
+  input: {
+    courseId: string;
+    termId: string;
+    coordinatorPersonId?: string | null;
+    featureRecordId?: string;
+  },
 ) {
   const existing = await db.courseOffering.findUnique({
     where: { courseId_termId: { courseId: input.courseId, termId: input.termId } },
   });
   if (existing) {
+    const data: { coordinatorPersonId?: string | null; featureRecordId?: string } = {};
     if (
       input.coordinatorPersonId !== undefined &&
       input.coordinatorPersonId !== existing.coordinatorPersonId
-    ) {
-      return db.courseOffering.update({
-        where: { id: existing.id },
-        data: { coordinatorPersonId: input.coordinatorPersonId },
-      });
-    }
-    return existing;
+    )
+      data.coordinatorPersonId = input.coordinatorPersonId;
+    if (input.featureRecordId && input.featureRecordId !== existing.featureRecordId)
+      data.featureRecordId = input.featureRecordId;
+    if (!Object.keys(data).length) return existing;
+    return db.courseOffering.update({ where: { id: existing.id }, data });
   }
+  if (!input.featureRecordId)
+    throw new Error(
+      "An offering is a course_offering record: create the record, which creates the offering",
+    );
   return db.courseOffering.create({
     data: {
       departmentId,
       courseId: input.courseId,
       termId: input.termId,
       coordinatorPersonId: input.coordinatorPersonId ?? null,
+      featureRecordId: input.featureRecordId,
     },
   });
 }

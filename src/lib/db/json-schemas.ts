@@ -143,4 +143,21 @@ export const jsonSchemas: Record<string, ZodType> = {
   // Dashboard: what a projection row is about, and the numbers it holds.
   "DashboardProjection.dimensionsJson": z.record(z.string(), z.unknown()),
   "DashboardProjection.valuesJson": z.record(z.string(), z.number()),
+  // Assessment: how many students got each letter the scale can produce ...
+  "CourseMetricsSnapshot.gradeDistributionJson": z.record(z.string(), z.number()),
+  // ... and, per component, how many were marked and how the marks were spread.
+  "CourseMetricsSnapshot.componentStatsJson": z.array(
+    z.object({
+      key: z.string(),
+      name: z.string(),
+      maxMark: z.number(),
+      weightPercent: z.number(),
+      marked: z.number(),
+      missing: z.number(),
+      averageMark: z.number().nullable(),
+      averagePercent: z.number().nullable(),
+      minMark: z.number().nullable(),
+      maxMarkAwarded: z.number().nullable(),
+    }),
+  ),
 };

@@ -13,6 +13,7 @@ import { seedTemplates } from "./seed/templates";
 import { seedForms } from "./seed/forms";
 import { seedAdapters } from "./seed/adapters";
 import { seedFeatures } from "./seed/features";
+import { backfillOfferingRecords } from "./seed/features/backfill-offering-records";
 import { seedReportDefinitions } from "../src/platform/reporting";
 import { rebuild as rebuildSearch } from "../src/platform/search";
 import { rebuildProjections } from "../src/platform/dashboard";
@@ -39,6 +40,13 @@ export async function runSeed(db: PrismaClient) {
   await seedFeatures();
   await seedReportDefinitions(db);
   if (process.env.SEED_DEMO === "1") await seedDemo(db);
+
+  // an offering that existed before offerings were a process gets the record it should have had
+  const backfilled = await backfillOfferingRecords(db);
+  if (backfilled.created || backfilled.skipped)
+    console.log(
+      `seed: offering records — ${backfilled.created} created, ${backfilled.advanced} already under way, ${backfilled.skipped} skipped`,
+    );
 
   // a seeded department is searchable straight away: the subscribers keep the index current
   // from here, but nothing they listen to has happened for the rows the seed just wrote

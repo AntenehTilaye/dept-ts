@@ -112,9 +112,12 @@ model Student {
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
-  sectionMemberships StudentSectionMembership[]
-  representations    SectionRepresentative[]
-  enrollments        Enrollment[]
+  sectionMemberships   StudentSectionMembership[]
+  representations      SectionRepresentative[]
+  enrollments          Enrollment[]
+  assessmentRecords    AssessmentRecord[]
+  attendanceSummaries  StudentAttendanceSummary[]
+  courseResults        StudentCourseResult[]
 
   @@unique([departmentId, studentNumber])
   @@map("student")

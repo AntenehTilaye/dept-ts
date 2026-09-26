@@ -181,13 +181,20 @@ export const MATRIX: MatrixRow[] = [
     "manage",
     ALL.filter((k) => k !== "feature.manage" && k !== "admin.department"),
   ),
-  ...grant("instructor", "assigned", ["committee.view", "task.view", "task.act", "meeting.view"]),
+  // teaching a section is an assignment, not ownership: a section's marks belong to whoever holds
+  // the teaching assignment on it, which is the relationship `assigned` asks for
+  ...grant("instructor", "assigned", [
+    "committee.view",
+    "task.view",
+    "task.act",
+    "meeting.view",
+    "assessment.import",
+    "assessment.view",
+  ]),
   ...grant("instructor", "own", [
     "task.create",
     "portfolio.view",
     "portfolio.submit_own",
-    "assessment.import",
-    "assessment.view",
     "cqi.manage",
     "evaluation.view_own",
     "staff.own",

@@ -1,4 +1,6 @@
 import type { ImportKind } from "@/generated/prisma/enums";
+import { globalSingleton } from "../../lib/singleton";
+import type { Db } from "../../lib/db/types";
 import type { ColumnSpec } from "./mapping";
 
 // What each kind of file is supposed to contain. One list per kind, used three times: to build
@@ -13,6 +15,14 @@ export interface KindSpec {
   columns: ColumnSpec[];
   /** One line under the header row of the template. */
   guidance: string;
+  /**
+   * Columns this kind only knows once it sees the context — one per assessment component, say.
+   * The template builder asks for them; the mapper treats them like any other column.
+   */
+  contextColumns?: (
+    db: Db,
+    context: { subjectType: string; subjectId: string } | null,
+  ) => Promise<ColumnSpec[]>;
 }
 
 const ROSTER: KindSpec = {
@@ -111,14 +121,23 @@ const KINDS: Partial<Record<ImportKind, KindSpec>> = {
   class_timetable: CLASS_TIMETABLE,
 };
 
+// A module registers the kinds it can read. The two above are the platform's own because the
+// pipeline was proven on them; everything else — marks, attendance, staff, assets — belongs to
+// the module that knows what the rows mean.
+const registered = globalSingleton("import-kind-specs", () => new Map<string, KindSpec>());
+
+export function registerKindSpec(spec: KindSpec): void {
+  registered.set(spec.kind, spec);
+}
+
 export function kindSpec(kind: string): KindSpec {
-  const spec = KINDS[kind as ImportKind];
+  const spec = KINDS[kind as ImportKind] ?? registered.get(kind);
   if (!spec) throw new Error(`No import template is defined for "${kind}"`);
   return spec;
 }
 
 export function listKinds(): KindSpec[] {
-  return Object.values(KINDS) as KindSpec[];
+  return [...(Object.values(KINDS) as KindSpec[]), ...registered.values()];
 }
 
 /** exceljs-hardened is CommonJS: under ESM its classes hang off the default export. */
@@ -130,8 +149,13 @@ async function excel(): Promise<typeof import("exceljs-hardened")> {
 }
 
 /** The template as a workbook: the headers, the guidance line and one example row. */
-export async function templateWorkbook(kind: string, context?: Record<string, string>): Promise<Buffer> {
-  const spec = kindSpec(kind);
+export async function templateWorkbook(
+  kind: string,
+  context?: Record<string, string>,
+  columns?: ColumnSpec[],
+): Promise<Buffer> {
+  const base = kindSpec(kind);
+  const spec = columns ? { ...base, columns } : base;
   const { Workbook } = await excel();
   const workbook = new Workbook();
   workbook.creator = "DeptTS";
@@ -158,9 +182,18 @@ export async function templateWorkbook(kind: string, context?: Record<string, st
 }
 
 /** The same template as CSV, for whoever prefers it. */
-export function templateCsv(kind: string): string {
+export function templateCsv(kind: string, columns?: ColumnSpec[]): string {
+  const list = columns ?? kindSpec(kind).columns;
+  return `${list.map((c) => c.label).join(",")}\n${list.map((c) => c.example ?? "").join(",")}\n`;
+}
+
+/** The columns of a kind for one context: its fixed ones plus whatever the context adds. */
+export async function columnsFor(
+  kind: string,
+  db: Db,
+  context: { subjectType: string; subjectId: string } | null,
+): Promise<ColumnSpec[]> {
   const spec = kindSpec(kind);
-  return `${spec.columns.map((c) => c.label).join(",")}\n${spec.columns
-    .map((c) => c.example ?? "")
-    .join(",")}\n`;
+  const extra = spec.contextColumns ? await spec.contextColumns(db, context) : [];
+  return [...spec.columns, ...extra];
 }

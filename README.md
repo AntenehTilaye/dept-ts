@@ -29,6 +29,7 @@ once on the host so bind-mount modes never show as changes.
 | Commit a phase | `docker compose run --rm web git add -A` · `docker compose run --rm web git commit -m "..."` |
 | psql | `docker compose exec db psql -U dept_migrator -d dept` |
 | Reset the database only | `docker compose down` · `docker volume rm deptts_pgdata` · start again (never `down -v`: that also deletes the `node_modules` volume) |
+| Reset one database | `docker compose run --rm -e DATABASE_URL_MIGRATE=postgresql://dept_migrator:dept_migrator@db:5432/dept_e2e web npx prisma migrate reset --force` then **re-grant**: `docker compose exec -T db psql -U dept_migrator -d dept_e2e < docker/postgres/grants.sql` (a reset drops the `public` schema and the grants with it, after which `dept_app` can read nothing) |
 
 Copy `.env.example` to `.env` (gitignored) once; everything else is set by `compose.yaml`.
 
@@ -98,6 +99,16 @@ The index is kept current by outbox subscribers — everything already publishes
 One rendering path for every report (`src/platform/reporting`). A report is a registration — who may run it, what it asks for, where its rows come from — and the framework turns those rows into a readable page, a workbook with typed columns, a csv with a BOM, or an A4 PDF. `department_activity`, `task_list` and `audit_extract` ship with it, one per format worth proving.
 
 HTML and CSV are rendered in the request; a PDF needs a browser and a workbook can be large, so both are a `report.generate` job, deduplicated on the report, its parameters and the format. The worker keeps one Chromium per process, relaunches it if it dies and limits concurrent renders (`PDF_CONCURRENCY`); a failure is written onto the run so the page can say what went wrong rather than spinning. Whatever the format, the output is stored through the document service with a `generated_output` link, so downloads are the same audited, signed, five-minute links as every other file. `/d/[dept]/reports` lists what the reader may run and what has been generated lately. `ExportFormatSpec` (a versioned description of a file another system expects, with a golden sample to diff against) is in place for the load phase.
+
+## Marking and course figures
+
+A course is marked against a **scheme**: components with a maximum and a weight, declared once for the offering and overridden by a section that does it differently. The components are what a mark sheet's columns are, which is why the template somebody downloads already has the right ones on it — `contextColumns` is how a kind of import discovers columns from what the batch is about. The first committed marks lock the structure, because every mark stored was entered against the structure as it was.
+
+A sheet of marks is an ordinary staged import (see below): upload, read, see exactly what is wrong with which line, fix it, commit. What the assessment module adds is three kinds of file (`assessment`, `attendance`, `students`) — a validator and a committer each — and the rule about who may write them: a section's marks belong to whoever holds the teaching assignment on it, which is a `CommitAuthority` the kind registers rather than a special case in the pipeline. A commit replaces the section's marks as a whole, because the sheet is the whole truth about the section; the batch it replaces is kept as the record of what was superseded.
+
+Everything that follows from the marks is **derived**. `snapshot.compute` recomputes each student's result — the weighted total, the letter from the programme's grade scale, and `incomplete` when the final was not sat, however good the rest was — then the section's figures and then the offering's, consolidated from its sections weighted by how many students each had. A missing mark is not a zero: it is unearned, so a student who missed a thirty-percent component cannot score above seventy. Because it is derived, the job is safe to run again, and a snapshot the department has reported on is **frozen** — a trigger refuses every update to it, so a published number cannot quietly change.
+
+An offering is itself a process (`course_offering`): planned, confirmed, running, completed, and its dates come from the academic calendar, so teaching starts and ends without anybody having to remember. Closing it freezes the figures.
 
 ## Importing spreadsheets
 

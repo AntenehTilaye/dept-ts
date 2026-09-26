@@ -8,7 +8,9 @@ import { SEED_FEATURES } from "../../../prisma/seed/features";
 import { caseFeature } from "../../../prisma/seed/features/case";
 import { committee } from "../../../prisma/seed/features/committee";
 import { committeeReport } from "../../../prisma/seed/features/committee_report";
+import { courseOffering } from "../../../prisma/seed/features/course_offering";
 import { genericRequest } from "../../../prisma/seed/features/generic_request";
+import { importBatch } from "../../../prisma/seed/features/import_batch";
 import { task } from "../../../prisma/seed/features/task";
 
 // The built-ins are ordinary definitions, so the same checks apply to them: they parse, they
@@ -28,6 +30,7 @@ const ADAPTERS: Record<string, string> = {
   "import.commit": "effect",
   "import.noRowsInError": "guard",
   "import.actorMayCommit": "guard",
+  "import.sectionNotLocked": "guard",
   "committee.backing": "backing",
   "committee_report.backing": "backing",
   "committee.chairIsMember": "guard",
@@ -36,6 +39,9 @@ const ADAPTERS: Record<string, string> = {
   "committee.completeReportedTasks": "effect",
   "committee.escalateIssueToCase": "effect",
   "committee_report.setSubmittedAt": "effect",
+  "course_offering.backing": "backing",
+  "offering.freezeSnapshots": "effect",
+  "offering.notifyCancelled": "effect",
 };
 
 describe("the seeded features", () => {
@@ -178,6 +184,67 @@ describe("the seeded features", () => {
     expect(
       compiled.workflow.transitions.find((t) => t.key === "revision_required.resubmit")!.to,
     ).toBe("submitted");
+  });
+
+  it("gives `import_batch` one preset per kind of file, each fixing what the rows are", () => {
+    const def = FeatureDefinitionSchema.parse(importBatch);
+    expect(Object.keys(def.presets).sort()).toEqual([
+      "assessment",
+      "attendance",
+      "class_timetable",
+      "roster",
+      "students",
+    ]);
+    // the kind is locked: it is what decides which validator and which committer run
+    const locks = deriveImplicitLocks(def);
+    for (const key of Object.keys(def.presets))
+      expect(locks).toContain(`/presets/${key}/fieldDefaults`);
+    expect(def.presets.assessment).toMatchObject({
+      fieldDefaults: { kind: "assessment" },
+      parentSubjectType: "section_offering",
+    });
+    expect(def.presets.students).toMatchObject({ parentSubjectType: "term" });
+    // the section lock is what the commit guard was written for
+    const compiled = compile(def, { isSystem: true });
+    const commit = compiled.workflow.transitions.find((t) => t.key === "validated.commit")!;
+    expect(commit.guards).toContain("import.sectionNotLocked");
+  });
+
+  it("compiles `course_offering` so the calendar moves it rather than a person having to", () => {
+    const compiled = compile(courseOffering, { isSystem: true });
+    expect(compiled.workflow.states.map((s) => s.key)).toEqual([
+      "planned",
+      "confirmed",
+      "running",
+      "completed",
+      "cancelled",
+    ]);
+    // teaching begins and ends on the dates the academic calendar already holds
+    expect(compiled.autoTriggers.confirmed).toEqual([
+      {
+        stepKey: "confirmed",
+        actionKey: "auto_start",
+        transitionKey: "confirmed.auto_start",
+        when: "deadline",
+      },
+    ]);
+    expect(compiled.autoTriggers.running?.[0]?.actionKey).toBe("auto_complete");
+    const def = FeatureDefinitionSchema.parse(courseOffering);
+    expect(def.steps[1]).toMatchObject({
+      deadline: { rule: "calendar", periodKind: "teaching", edge: "start" },
+    });
+    expect(def.steps[2]).toMatchObject({
+      deadline: { rule: "calendar", periodKind: "teaching", edge: "end" },
+    });
+    // closing an offering freezes the figures it produced, whoever closed it
+    for (const key of ["running.complete", "running.auto_complete"])
+      expect(
+        compiled.workflow.transitions
+          .find((t) => t.key === key)!
+          .effects.some((e) => e.kind === "invokeHandler"),
+      ).toBe(true);
+    // the term is what the offering IS, so it is locked
+    expect(deriveImplicitLocks(def)).toContain("/record/fields/0");
   });
 
   it("hashes each built-in's locked subtree stably", () => {

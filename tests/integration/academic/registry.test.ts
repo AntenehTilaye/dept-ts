@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { courseLineage, listOfferingsOfCourse } from "@/platform/academic/courses";
 import {
-  ensureOffering,
   ensureSectionOffering,
   isSectionLocked,
   lockSectionAssessment,
@@ -26,9 +25,13 @@ describe("academic registry", () => {
     await withDept(DEPT_CS, async (tx) => {
       const c = await f.course(tx, DEPT_CS);
       const term = await f.currentTermOf(tx, DEPT_CS);
-      const a = await ensureOffering(tx, DEPT_CS, { courseId: c.id, termId: term.id });
-      const b = await ensureOffering(tx, DEPT_CS, { courseId: c.id, termId: term.id });
-      expect(b.id).toBe(a.id);
+      // an offering is created through its record; asking twice for the same course and term
+      // gives the offering that exists rather than a second one
+      const first = await f.offering(tx, DEPT_CS, { courseId: c.id, termId: term.id });
+      const again = await f.offering(tx, DEPT_CS, { courseId: c.id, termId: term.id });
+      const a = first.offering;
+      expect(again.offering.id).toBe(a.id);
+      expect(a.featureRecordId).toBeTruthy();
       const s = await f.section(tx, DEPT_CS);
       const so1 = await ensureSectionOffering(tx, DEPT_CS, {
         courseOfferingId: a.id,

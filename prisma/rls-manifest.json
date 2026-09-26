@@ -13,6 +13,18 @@
       "table": "answer"
     },
     {
+      "model": "AssessmentComponent",
+      "table": "assessment_component"
+    },
+    {
+      "model": "AssessmentRecord",
+      "table": "assessment_record"
+    },
+    {
+      "model": "AssessmentScheme",
+      "table": "assessment_scheme"
+    },
+    {
       "model": "AvailabilityBlock",
       "table": "availability_block"
     },
@@ -59,6 +71,10 @@
     {
       "model": "Course",
       "table": "course"
+    },
+    {
+      "model": "CourseMetricsSnapshot",
+      "table": "course_metrics_snapshot"
     },
     {
       "model": "CourseOffering",
@@ -183,6 +199,14 @@
     {
       "model": "Student",
       "table": "student"
+    },
+    {
+      "model": "StudentAttendanceSummary",
+      "table": "student_attendance_summary"
+    },
+    {
+      "model": "StudentCourseResult",
+      "table": "student_course_result"
     },
     {
       "model": "StudentSectionMembership",
@@ -345,5 +369,5 @@
       "table": "verification"
     }
   ],
-  "hash": "92046de024e155adc6475b6b935d0f26e85f9e2de392e5f55120f1e116b047e1"
+  "hash": "ffeecc9175aa6976cc09658d39a39252e04089d3d1ed3dec3bb17219bff1baf5"
 }

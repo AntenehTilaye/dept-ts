@@ -5,7 +5,8 @@ import { ensurePerson, attachToDepartment } from "@/platform/people/persons";
 import { upsertStaffProfile } from "@/platform/people/staff";
 import { upsertStudent, setSectionMembership } from "@/platform/people/students";
 import { upsertProgram, upsertCourse } from "@/platform/academic/courses";
-import { ensureOffering, ensureSectionOffering } from "@/platform/academic/offerings";
+import { ensureSectionOffering } from "@/platform/academic/offerings";
+import { provisionOffering } from "@/modules/assessment/provision";
 import { SEED_YEARS } from "../../prisma/seed/calendar";
 
 // Factories write through the real service API (never raw inserts) except where a test
@@ -102,6 +103,8 @@ export async function student(
     email?: string | null;
     userId?: string | null;
     fullName?: string;
+    /** When a test's fixture file names the student by number. */
+    studentNumber?: string;
   } = {},
 ) {
   const sec = over.sectionId
@@ -115,7 +118,7 @@ export async function student(
     fullName: over.fullName,
   });
   await upsertStudent(db, departmentId, p.id, {
-    studentNumber: `ST/${uniqueSuffix()}`,
+    studentNumber: over.studentNumber ?? `ST/${uniqueSuffix()}`,
     programId,
     admissionYear: 2024,
   });
@@ -126,7 +129,7 @@ export async function student(
       academicYearId: sec.academicYearId,
       from: new Date("2026-09-01T00:00:00Z"),
     });
-  return p;
+  return { ...p, personId: p.id };
 }
 
 export async function committee(
@@ -163,14 +166,49 @@ export async function course(
   });
 }
 
+/**
+ * An offering is a `course_offering` record, so the factory creates one through the runtime — which
+ * needs somebody to have created it. Any user of the department will do; the seeded head is the
+ * obvious one, and a test that cares about the actor passes its own.
+ */
 export async function offering(
   db: Db,
   departmentId: string,
-  over: { courseId?: string; termId?: string; sectionIds?: string[] } = {},
+  over: {
+    courseId?: string;
+    termId?: string;
+    sectionIds?: string[];
+    actor?: { userId: string | null; personId: string | null };
+    state?: "planned" | "confirmed" | "running";
+  } = {},
 ) {
   const courseId = over.courseId ?? (await course(db, departmentId)).id;
   const termId = over.termId ?? (await currentTermOf(db, departmentId)).id;
-  const o = await ensureOffering(db, departmentId, { courseId, termId });
+
+  const existing = await db.person.findFirst({
+    where: { departments: { some: { departmentId, leftAt: null } }, userId: { not: null } },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, userId: true },
+  });
+  const person: { userId: string | null; personId: string | null } =
+    over.actor ??
+    (existing
+      ? { userId: existing.userId, personId: existing.id }
+      : { userId: null, personId: (await staff(db, departmentId)).id });
+
+  const provisioned = await provisionOffering(
+    db,
+    departmentId,
+    {
+      userId: person.userId ?? "factory",
+      personId: person.personId,
+      departmentId,
+      isAdmin: true,
+    },
+    { courseId, termId, advanceTo: over.state ?? "running" },
+  );
+  const o = await db.courseOffering.findUniqueOrThrow({ where: { id: provisioned.id } });
+
   const sectionOfferings = [];
   for (const sectionId of over.sectionIds ?? [])
     sectionOfferings.push(

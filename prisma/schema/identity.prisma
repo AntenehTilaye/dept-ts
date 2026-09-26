@@ -89,6 +89,12 @@ model Department {
   dashboardProjections   DashboardProjection[]
   committees             Committee[]
   committeeReports       CommitteeReport[]
+  assessmentSchemes      AssessmentScheme[]
+  assessmentComponents   AssessmentComponent[]
+  assessmentRecords      AssessmentRecord[]
+  attendanceSummaries    StudentAttendanceSummary[]
+  courseResults          StudentCourseResult[]
+  metricsSnapshots       CourseMetricsSnapshot[]
 
   @@map("department")
 }

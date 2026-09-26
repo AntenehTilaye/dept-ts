@@ -2,6 +2,7 @@ import type { Readable } from "node:stream";
 import { globalSingleton } from "@/lib/singleton";
 import { storage } from "@/lib/storage";
 import {
+  commitAuthority,
   commitBatch,
   fixRow,
   ImportError,
@@ -192,6 +193,22 @@ export function registerImportAdapters(): void {
     async (ctx) => {
       if (!ctx.actor) return { ok: false as const, reason: "Only a person may commit an import" };
       if (ctx.actor.isAdmin) return true;
+      const batch = await ctx.tx.importBatch.findFirst({
+        where: { featureRecordId: ctx.instance.subjectId },
+        select: { kind: true, contextType: true, contextId: true },
+      });
+      // a kind whose rows belong to somebody in particular says who that is; everything else is
+      // whoever may manage imports
+      const authority = batch ? commitAuthority(batch.kind) : undefined;
+      if (authority)
+        return authority({
+          tx: ctx.tx,
+          actor: ctx.actor,
+          context:
+            batch?.contextType && batch.contextId
+              ? { subjectType: batch.contextType, subjectId: batch.contextId }
+              : null,
+        });
       const { can } = await import("@/platform/identity/can");
       const { dbPolicyStore } = await import("@/platform/identity/policy-store");
       const decision = await can(dbPolicyStore, ctx.actor, "import.manage", undefined, {

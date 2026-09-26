@@ -1,3 +1,7 @@
+import { registerAssessmentAdapters } from "./assessment/adapters";
+import { registerOfferingEffects } from "./assessment/offering-effects";
+import { registerAssessmentReports } from "./assessment/reports";
+import { installAssessmentSubscribers } from "./assessment/subscribers";
 import { registerCaseAdapters } from "./cases/adapters";
 import { registerCommitteeAdapters } from "./committees/adapters";
 import { registerCommitteeReports } from "./committees/reports";
@@ -19,4 +23,8 @@ export function registerModules(): void {
   registerCommitteeSubjects();
   registerCommitteeReports();
   registerCommitteeSearch();
+  registerAssessmentAdapters();
+  registerOfferingEffects();
+  installAssessmentSubscribers();
+  registerAssessmentReports();
 }
