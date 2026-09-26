@@ -4,9 +4,8 @@
 
 Structured according to IEEE 830-1998, *Recommended Practice for Software Requirements
 Specifications*. This document describes the system as it exists in this repository at
-commit `33704e7` (phases P0–P12 merged into `main`) together with the phase P13 work present in
-the working tree. Requirements that the design intends but the code does not yet contain are
-stated as deferred and carry the phase that delivers them.
+commit `c2fc45f` (phases P0–P13 merged into `main`). Requirements that the design intends but the
+code does not yet contain are stated as deferred and carry the phase that delivers them.
 
 ---
 
@@ -272,7 +271,7 @@ Grouped by capability. Each group maps to a subsection of 3.2.
 15. **Committees.** A committee whose membership is a `Group`; constitution, standing down,
     reactivation and dissolution; committee reports whose unsettled issues become cases and whose
     approval closes the tasks it reported finished.
-16. **Assessment (P13, in the working tree).** Assessment schemes and components, imported marks,
+16. **Assessment (P13).** Assessment schemes and components, imported marks,
     derived per-student results, metric snapshots with freezing, and the `course_offering`
     lifecycle.
 17. **Audit and events.** Field-level audit of every write, append-only enforced by the database; a
@@ -340,10 +339,7 @@ by email, through a hashed one-time token at `/c/[token]`.
 
 ### 2.6 Apportioning of requirements
 
-Phases P0–P12 are merged into `main`. P13 (assessment) exists in the working tree: schema,
-migrations, the `src/modules/assessment` module, three import presets, the `course_offering` seed
-and `tests/unit/assessment/metrics.test.ts`. Its integration tests and its end-to-end journey are
-not yet written, and the `course_performance` report the plan names is not yet registered.
+Phases P0–P13 are merged into `main`.
 
 The following are specified by R5–R9 and deliberately absent from the code. They are requirements of
 the product, not of this release.
@@ -622,7 +618,7 @@ a mounted volume at `UPLOAD_DIR` (default `/data/uploads`).
 | FR-ACAD-008 | A timetable slot shall carry a validated `HH:MM` start before its end and a weekday between 1 and 7. | `tests/integration/academic/calendar-timetable.test.ts` |
 | FR-ACAD-009 | Registry pages shall live under the department segment (`/d/[dept]/{calendar,programs,courses,offerings,offerings/[id],resources,people,people/[personId],sections}`) and be gated by `academic.manage` or `staff.view`. | `tests/e2e/p3-registry.spec.ts` |
 | FR-ACAD-010 | The people directory shall search by trigram similarity over `person.full_name`, inside the caller's department transaction. | `tests/integration/people/person-global.test.ts` |
-| FR-ACAD-011 | Every course offering shall be a `course_offering` feature record; `CourseOffering.featureRecordId` is `NOT NULL` from P13 on, after the backfill. (**P13, uncommitted.**) | `prisma/seed/features/backfill-offering-records.ts` |
+| FR-ACAD-011 | Every course offering shall be a `course_offering` feature record; `CourseOffering.featureRecordId` is `NOT NULL` from P13 on, after the backfill. | `prisma/seed/features/backfill-offering-records.ts` |
 
 #### 3.2.13 Availability and conflict
 
@@ -644,7 +640,7 @@ a mounted volume at `UPLOAD_DIR` (default `/data/uploads`).
 | Id | Requirement | Verification |
 | --- | --- | --- |
 | FR-IMP-001 | Every spreadsheet shall pass through one staged pipeline expressed as the seeded `import_batch` feature: `uploaded` → `parsed` → `validated` → `committed`, with `discarded` as the way out. | `tests/integration/import/pipeline.test.ts` |
-| FR-IMP-002 | A kind of file shall be a preset plus two registrations, a validator and a committer. The five presets are `roster`, `class_timetable` (platform) and `assessment`, `attendance`, `students` (assessment module, **P13, uncommitted**). | `tests/unit/feature/seeds.test.ts` |
+| FR-IMP-002 | A kind of file shall be a preset plus two registrations, a validator and a committer. The five presets are `roster`, `class_timetable` (platform) and `assessment`, `attendance`, `students` (assessment module). | `tests/unit/feature/seeds.test.ts` |
 | FR-IMP-003 | A validator shall see every row at once, so a duplicate can be seen at all, and answer per row with normalised values, errors and warnings. | `tests/unit/import/validators.test.ts` |
 | FR-IMP-004 | A committer shall run inside the commit transaction with rows a validator already understood, so it writes rather than interprets, and the whole file lands or none of it does. | `tests/integration/import/pipeline.test.ts` |
 | FR-IMP-005 | Column matching shall ignore case, spaces and punctuation; a saved `ColumnMappingProfile` shall beat every guess; a required column nothing claimed shall be one batch-level error rather than one error per row. | `tests/unit/import/mapping.test.ts` |
@@ -662,7 +658,7 @@ a mounted volume at `UPLOAD_DIR` (default `/data/uploads`).
 | Id | Requirement | Verification |
 | --- | --- | --- |
 | FR-REP-001 | A report shall be a registration naming who may run it, what it asks for and where its rows come from; the framework shall turn those rows into HTML, CSV, XLSX or an A4 PDF. | `tests/unit/reporting/render.test.ts` |
-| FR-REP-002 | Five reports shall be registered: `department_activity`, `task_list`, `audit_extract` (platform) and `committee`, `committee_task` (committees module). The `course_performance` report the plan names for P13 is **not yet registered**. | `tests/integration/reporting/generate.test.ts` |
+| FR-REP-002 | Six reports shall be registered: `department_activity`, `task_list`, `audit_extract` (platform), `committee`, `committee_task` (committees module) and `course_performance` (assessment module). | `tests/integration/reporting/generate.test.ts` |
 | FR-REP-003 | HTML and CSV shall be rendered in the request; PDF and XLSX shall be a `report.generate` job, deduplicated on the report, its parameters and the format. | `tests/integration/reporting/generate.test.ts` |
 | FR-REP-004 | A PDF shall be produced by one Chromium per worker process, relaunched if it dies, with concurrency limited by `PDF_CONCURRENCY`; the output shall begin with `%PDF-` and contain the expected text. | `tests/worker/report-pdf.test.ts` |
 | FR-REP-005 | A failure shall be written onto the run so the page can say what went wrong rather than spinning. | `tests/integration/reporting/generate.test.ts` |
@@ -714,21 +710,21 @@ a mounted volume at `UPLOAD_DIR` (default `/data/uploads`).
 | FR-CMTE-011 | `CommitteeReport.submissionId` shall be nullable until an answer is saved, and shall be bound by the effect that stamps `submittedAt`. | `tests/integration/committees/report.test.ts` |
 | FR-CMTE-012 | Committees and reports shall be searchable. | `tests/integration/committees/search.test.ts` |
 
-#### 3.2.19 Assessment, results and metric snapshots (P13, in the working tree)
+#### 3.2.19 Assessment, results and metric snapshots (P13)
 
 | Id | Requirement | Verification |
 | --- | --- | --- |
 | FR-ASMT-001 | An assessment scheme shall belong to a course offering, with an optional per-section override, and shall hold ordered components with a maximum mark, a weight, a final-examination flag and, for an override component, the offering component it stands for. | `tests/unit/assessment/metrics.test.ts` |
-| FR-ASMT-002 | Component weights shall be checked to add up before marks may be imported. | `src/modules/assessment/results.ts` |
+| FR-ASMT-002 | Component weights shall be checked to add up before marks may be imported. | `tests/unit/assessment/metrics.test.ts` |
 | FR-ASMT-003 | Marks shall be stored as imported, one row per student, component and section offering, recording which batch wrote them and distinguishing an empty cell from a zero. | `prisma/schema/portfolio.prisma` |
-| FR-ASMT-004 | Re-importing shall replace the previous batch's rows atomically. | *integration test pending (P13 in progress)* |
+| FR-ASMT-004 | Re-importing shall replace the previous batch's rows atomically, and the batch it superseded shall be recorded. | `tests/integration/assessment/commit.test.ts` |
 | FR-ASMT-005 | Per-student results shall be derived — total, letter grade, outcome — from the marks and the programme's grade scale, recording which scale produced the letter. | `tests/unit/assessment/metrics.test.ts` |
 | FR-ASMT-006 | Figures per section and per offering shall be computed into `CourseMetricsSnapshot` (average, pass and fail rates, grade distribution, per-component statistics, completion and attendance rates, student count) with a hash of the marks they came from, so an unchanged hash needs no recomputation. | `tests/unit/assessment/metrics.test.ts` |
-| FR-ASMT-007 | Recomputation shall be a `snapshot.compute` job, singleton per section offering, so two runs over the same marks do not write the same rows twice. | *worker test pending (P13 in progress)* |
+| FR-ASMT-007 | Recomputation shall be a `snapshot.compute` job, singleton per section offering, so two runs over the same marks do not write the same rows twice. | `tests/worker/snapshot-compute.test.ts` |
 | FR-ASMT-008 | A frozen snapshot shall be immutable: the trigger `course_metrics_snapshot_frozen` refuses every update. | `prisma/migrations/20260926082527_p13_assessment/migration.sql` |
 | FR-ASMT-009 | An offering-level snapshot shall be consolidated from its sections, excluding components marked as excluded from consolidation. | `tests/unit/assessment/metrics.test.ts` |
 | FR-ASMT-010 | The `course_offering` lifecycle shall be `planned` → `confirmed` → `running` → `completed`, with `cancelled` as the other terminal, and shall support automatic start and automatic completion from the calendar. | `tests/unit/feature/seeds.test.ts` |
-| FR-ASMT-011 | Committing marks shall be refused for a section whose assessment is locked (`import.sectionNotLocked`) and by an actor who may not commit (`import.actorMayCommit`). | `tests/unit/import/validators.test.ts` |
+| FR-ASMT-011 | Committing marks shall be refused for a section whose assessment is locked (`import.sectionNotLocked`) and by an actor who may not commit — for marks and attendance, somebody without a teaching assignment on the section (`CommitAuthority`). | `tests/integration/assessment/commit.test.ts` |
 
 #### 3.2.20 Audit, events and administration
 
@@ -897,7 +893,7 @@ recorded in `prisma/rls-manifest.json` with a sha256 hash over the sorted table 
 | Search (`search.prisma`) | `SearchIndexEntry` | tenant | Primary key `(subject_type, subject_id)`; generated `tsvector` column plus GIN indexes on it, on `acl_tokens` and on `title` trigrams. |
 | Dashboard (`dashboard.prisma`) | `DashboardProjection` | tenant | `dimensionsJson` and `valuesJson`; idempotent upsert per row key. |
 | Committee (`committee.prisma`) | `Committee`, `CommitteeReport` | tenant | Each id *is* its feature record's id; `Committee.groupId` unique. |
-| Assessment (`portfolio.prisma`) | `AssessmentScheme`, `AssessmentComponent`, `AssessmentRecord`, `StudentAttendanceSummary`, `StudentCourseResult`, `CourseMetricsSnapshot` | tenant | P13, in the working tree. A frozen snapshot is immutable. |
+| Assessment (`portfolio.prisma`) | `AssessmentScheme`, `AssessmentComponent`, `AssessmentRecord`, `StudentAttendanceSummary`, `StudentCourseResult`, `CourseMetricsSnapshot` | tenant | P13. A frozen snapshot is immutable. |
 | Placeholders | `meeting.prisma`, `planning.prisma`, `load.prisma`, `scheduling.prisma`, `resource.prisma` | — | Empty files reserved for P17–P25. |
 
 #### 3.4.2 Cross-cutting data rules
@@ -936,7 +932,7 @@ Requirement group → delivering phase → primary verification.
 | FR-SRCH-001…008 | P11b | merged | `tests/integration/search/acl.test.ts`, `tests/e2e/p11-search.spec.ts` |
 | FR-DASH-001…008 | P11c | merged | `tests/integration/dashboard/projections.test.ts`, `tests/e2e/p11-dashboard.spec.ts` |
 | FR-CMTE-001…012 | P12 | merged | `tests/unit/committees/activity-history.test.ts`, `tests/integration/committees/*`, `tests/components/committees/ActivityHistory.test.tsx`, `tests/e2e/p12-committees.spec.ts` |
-| FR-ASMT-001…011, FR-ACAD-011 | P13 | **in the working tree; integration and end-to-end verification outstanding** | `tests/unit/assessment/metrics.test.ts` |
+| FR-ASMT-001…011, FR-ACAD-011 | P13 | merged | `tests/unit/assessment/{metrics,validators,mapping}.test.ts`, `tests/integration/assessment/commit.test.ts`, `tests/integration/academic/offering-lifecycle.test.ts`, `tests/worker/snapshot-compute.test.ts`, `tests/e2e/p13-assessment.spec.ts` |
 | FR-UI-001…010, NFR-USE-001…006 | UI foundation, then every phase | merged | `tests/components/patterns/*` |
 | Portfolios and CQI | P14 | deferred | — |
 | Campaign presets, evaluations | P15, P16 | deferred | — |

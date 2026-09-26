@@ -7,8 +7,8 @@ Software Design Descriptions*: identified design stakeholders and their concerns
 design viewpoints, each presenting design elements (entities, attributes, relationships and
 constraints) that address those concerns.
 
-This document describes the design as built. The repository state it describes is commit `33704e7`
-(phases P0–P12 merged) plus the phase P13 assessment work present in the working tree. Design that
+This document describes the design as built. The repository state it describes is commit `c2fc45f`
+(phases P0–P13 merged). Design that
 is intended but not yet implemented is marked and attributed to its phase.
 
 ---
@@ -468,7 +468,7 @@ erDiagram
   sees a field rather than what a valid answer is, and therefore never reach a `Question` row or the
   question hash.
 
-### 4.6 Assessment (P13, in the working tree)
+### 4.6 Assessment (P13)
 
 ```mermaid
 erDiagram
