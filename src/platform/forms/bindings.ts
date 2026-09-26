@@ -36,6 +36,26 @@ export async function resolveBinding(key: SourceBinding, ctx: BindingContext): P
   return fn(ctx);
 }
 
+/**
+ * What "the context" means for a question on a record. A child record's context is its parent:
+ * a committee report asks about the committee's tasks and the committee's members, and the form
+ * it asks them on belongs to the report. Anything else is its own context.
+ */
+async function contextSubject(
+  db: BindingContext["db"],
+  subject: BindingContext["subject"],
+): Promise<{ subjectType: string; subjectId: string } | null> {
+  if (!subject) return null;
+  if (subject.subjectType !== "feature_record") return subject;
+  const record = await db.featureRecord.findUnique({
+    where: { id: subject.subjectId },
+    select: { parentSubjectType: true, parentSubjectId: true },
+  });
+  return record?.parentSubjectType && record.parentSubjectId
+    ? { subjectType: record.parentSubjectType, subjectId: record.parentSubjectId }
+    : subject;
+}
+
 function arg(ctx: BindingContext, name: string): string | undefined {
   const v = ctx.args?.[name];
   return typeof v === "string" ? v : undefined;
@@ -99,9 +119,10 @@ export function installBindings(): void {
   });
 
   registerBinding("tasks_in_context", async ({ db, subject }) => {
-    if (!subject) return [];
+    const context = await contextSubject(db, subject);
+    if (!context) return [];
     const rows = await db.task.findMany({
-      where: { contextType: subject.subjectType as never, contextId: subject.subjectId },
+      where: { contextType: context.subjectType as never, contextId: context.subjectId },
       orderBy: { createdAt: "desc" },
       take: 200,
     });
@@ -109,15 +130,16 @@ export function installBindings(): void {
   });
 
   registerBinding("members_of_parent", async ({ db, subject }) => {
-    if (!subject) return [];
+    const context = await contextSubject(db, subject);
+    if (!context) return [];
     const groupId =
-      subject.subjectType === "group"
-        ? subject.subjectId
+      context.subjectType === "group"
+        ? context.subjectId
         : ((
             await db.group.findFirst({
               where: {
-                contextType: subject.subjectType as never,
-                contextId: subject.subjectId,
+                contextType: context.subjectType as never,
+                contextId: context.subjectId,
               },
               select: { id: true },
             })

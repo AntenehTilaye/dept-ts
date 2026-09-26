@@ -1,4 +1,8 @@
 import { registerCaseAdapters } from "./cases/adapters";
+import { registerCommitteeAdapters } from "./committees/adapters";
+import { registerCommitteeReports } from "./committees/reports";
+import { registerCommitteeSubjects } from "./committees/registry";
+import { registerCommitteeSearch } from "./committees/search";
 import { registerImportAdapters } from "./imports/adapters";
 import { registerTaskAdapters } from "./tasks/adapters";
 
@@ -11,4 +15,8 @@ export function registerModules(): void {
   registerTaskAdapters();
   registerCaseAdapters();
   registerImportAdapters();
+  registerCommitteeAdapters();
+  registerCommitteeSubjects();
+  registerCommitteeReports();
+  registerCommitteeSearch();
 }

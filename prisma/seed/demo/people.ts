@@ -1,5 +1,5 @@
 import type { PrismaClient } from "../../../src/generated/prisma/client";
-import { createGroup, addMember } from "../../../src/platform/people/groups";
+import { createGroup } from "../../../src/platform/people/groups";
 import { ensurePerson, attachToDepartment } from "../../../src/platform/people/persons";
 import { upsertStaffProfile, upsertProfileItem } from "../../../src/platform/people/staff";
 import { upsertStudent, setSectionMembership } from "../../../src/platform/people/students";
@@ -148,28 +148,8 @@ export async function seedDemoPeople(db: PrismaClient) {
     });
   }
 
-  // committee group with chair.cs as chair
-  let committee = await db.group.findFirst({
-    where: { departmentId, kind: "committee", name: DEMO.committeeName },
-  });
-  if (!committee) {
-    committee = await createGroup(db, departmentId, {
-      kind: "committee",
-      name: DEMO.committeeName,
-    });
-    await addMember(db, departmentId, committee.id, {
-      personId: staffPersons.get("chair.cs")!,
-      roleInGroup: "chair",
-    });
-    await addMember(db, departmentId, committee.id, {
-      personId: staffPersons.get("instructor1.cs")!,
-      roleInGroup: "member",
-    });
-    await addMember(db, departmentId, committee.id, {
-      personId: staffPersons.get("instructor2.cs")!,
-      roleInGroup: "secretary",
-    });
-  }
+  // the committees themselves are created by demo/committees.ts, through the `committee`
+  // feature: a committee group with no committee behind it is not a thing this platform has
   for (const id of staffPersons.values()) await attachToDepartment(db, departmentId, id);
   return { program, sections, staffPersons };
 }

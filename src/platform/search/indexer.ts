@@ -1,4 +1,5 @@
 import { toJson } from "../../lib/db/json";
+import { globalSingleton } from "../../lib/singleton";
 import type { Db } from "../../lib/db/types";
 import { isRegistered, resolve, snapshot } from "../subject-registry";
 import { tokensForSubject } from "./acl";
@@ -21,8 +22,21 @@ export const INDEXED_TYPES = [
   "resource",
 ] as const;
 
+// A module makes its own subject type searchable by registering a source (see rebuild.ts);
+// the kernel knows nothing about committees, portfolios or meetings.
+const extraTypes = globalSingleton("search-indexed-types", () => new Set<string>());
+
+export function addIndexedType(subjectType: string): void {
+  extraTypes.add(subjectType);
+}
+
+/** Every type the index covers: the kernel's own, plus what the modules registered. */
+export function indexedTypes(): string[] {
+  return [...INDEXED_TYPES, ...extraTypes];
+}
+
 export function isIndexed(subjectType: string): boolean {
-  return (INDEXED_TYPES as readonly string[]).includes(subjectType);
+  return (INDEXED_TYPES as readonly string[]).includes(subjectType) || extraTypes.has(subjectType);
 }
 
 export interface IndexResult {

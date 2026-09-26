@@ -21,6 +21,8 @@ export interface StepAction {
   kind: string;
   requiresComment: boolean;
   allowed: boolean;
+  /** May take this action at all; the answers this form is collecting may still be missing. */
+  actorAllowed: boolean;
   reason?: string;
   confirm?: { title: string; message: string };
 }
@@ -150,7 +152,9 @@ export function StepForm({
               type="button"
               variant={action.kind === "reject" ? "destructive" : "default"}
               onClick={() => run(action)}
-              disabled={pending || !action.allowed}
+              // the answer that would enable it is being typed into this very form, so the
+              // button stays live and the server says what is still missing
+              disabled={pending || !action.actorAllowed}
               title={action.reason}
               aria-busy={pending}
             >

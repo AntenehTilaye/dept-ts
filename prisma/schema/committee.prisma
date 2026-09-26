@@ -1,1 +1,62 @@
-// committee models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Committees (design part 04 §20). A committee is a standing body of the department: a chair,
+// members, a term of office and a mandate. Its membership IS a Group, so every grant, thread,
+// audience and notification the platform already knows how to address works on it unchanged —
+// the Committee row only adds what a group cannot say. Its lifecycle is a `committee` feature
+// record, and the reports it owes are `committee_report` records under it. Both TENANT.
+
+/// A standing body with a chair, a mandate and a term of office. Its id IS the id of the feature
+/// record whose lifecycle it is, so a link, a parent reference and a permission scope all name
+/// the same thing by the same id. TENANT.
+model Committee {
+  id                   String     @id @default(cuid())
+  departmentId         String     @map("department_id")
+  department           Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  name                 String
+  purpose              String?
+  /// Free text the department chooses: standing, ad hoc, review, …
+  type                 String?
+  startDate            DateTime?  @map("start_date") @db.Date
+  endDate              DateTime?  @map("end_date") @db.Date
+  chairPersonId        String?    @map("chair_person_id")
+  chair                Person?    @relation("CommitteeChair", fields: [chairPersonId], references: [id], onDelete: SetNull)
+  /// The membership. Grants, threads and audiences all go through it rather than through here.
+  groupId              String     @unique @map("group_id")
+  group                Group      @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  /// The terms of reference as text; the signed document hangs off the record's `tor` slot.
+  responsibilitiesText String?    @map("responsibilities_text")
+  /// The record whose lifecycle this committee is; the feature runtime owns the states.
+  featureRecordId      String     @unique @map("feature_record_id")
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
+
+  reports CommitteeReport[]
+
+  @@index([departmentId])
+  @@map("committee")
+}
+
+/// What a committee did in a period, submitted by a member and reviewed by the head. Its id is
+/// its feature record's, for the same reason a committee's is. TENANT.
+model CommitteeReport {
+  id              String    @id @default(cuid())
+  departmentId    String    @map("department_id")
+  department      Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  committeeId     String    @map("committee_id")
+  committee       Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  periodFrom      DateTime  @map("period_from") @db.Date
+  periodTo        DateTime  @map("period_to") @db.Date
+  authorPersonId  String    @map("author_person_id")
+  author          Person    @relation("CommitteeReportAuthor", fields: [authorPersonId], references: [id], onDelete: Restrict)
+  /// The answers themselves; the report row only points at them. A step's Submission exists
+  /// from the first save, so this is empty for a report nobody has written into yet.
+  submissionId    String?   @unique @map("submission_id")
+  featureRecordId String    @unique @map("feature_record_id")
+  /// Derived cache of the submit transition, written by committee_report.setSubmittedAt.
+  submittedAt     DateTime? @map("submitted_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([committeeId])
+  @@index([departmentId])
+  @@map("committee_report")
+}

@@ -87,6 +87,8 @@ model Department {
   exportFormatSpecs      ExportFormatSpec[]
   searchEntries          SearchIndexEntry[]
   dashboardProjections   DashboardProjection[]
+  committees             Committee[]
+  committeeReports       CommitteeReport[]
 
   @@map("department")
 }

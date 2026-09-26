@@ -1,4 +1,5 @@
 import { globalSingleton } from "@/lib/singleton";
+import { registerCommitteeSurfaces } from "./committees/surface";
 import { registerImportSurface } from "./imports/register-surface";
 import { registerTaskSurface } from "./tasks/surface";
 
@@ -14,4 +15,5 @@ export function registerRecordSurfaces(): void {
   state.installed = true;
   registerTaskSurface();
   registerImportSurface();
+  registerCommitteeSurfaces();
 }

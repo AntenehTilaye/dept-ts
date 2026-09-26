@@ -47,11 +47,73 @@ export async function act(
   return applyIn(tx, ctx.record.workflowInstanceId, `${stepKey}.${actionKey}`, actor, {
     ...(personIds ? { personIds } : {}),
     comment: input.comment,
-    // the header answers count as answers: an action may require a field the record already has
-    fields: { ...((ctx.record.data as Record<string, unknown>) ?? {}), ...(input.answers ?? {}) },
+    // an action requires an answer, not an answer sent with it: what the step already holds
+    // counts, and so do the header answers the record was created with
+    fields: {
+      ...(await savedAnswers(tx, ctx, stepKey, input.branchKey ?? null)),
+      ...((ctx.record.data as Record<string, unknown>) ?? {}),
+      ...(input.answers ?? {}),
+    },
     branchKey: input.branchKey ?? undefined,
-    attachments: input.attachments,
+    attachments: await satisfiedSlots(tx, ctx, stepKey, input.branchKey ?? null, input.attachments),
   });
+}
+
+/** What this step's form already holds, so a required answer saved earlier still counts. */
+async function savedAnswers(
+  tx: Db,
+  ctx: StepContext,
+  stepKey: string,
+  branchKey: string | null,
+): Promise<Record<string, unknown>> {
+  const instance = await tx.featureStepInstance.findFirst({
+    where: { recordId: ctx.record.id, stepKey, branchKey, status: "active" },
+    orderBy: { sequence: "desc" },
+    select: { submissionId: true },
+  });
+  if (!instance?.submissionId) return {};
+  const rows = await tx.answer.findMany({
+    where: { submissionId: instance.submissionId },
+    select: { questionStableKey: true, valueJson: true },
+  });
+  const out: Record<string, unknown> = {};
+  for (const row of rows) out[row.questionStableKey] ??= row.valueJson;
+  return out;
+}
+
+/**
+ * Which attachment slots of this step actually hold a paper. An action that requires one is
+ * asking about the world, not about what the caller claims — so the answer is the document links
+ * on the step and on the record, and a caller may only add to it.
+ */
+async function satisfiedSlots(
+  tx: Db,
+  ctx: StepContext,
+  stepKey: string,
+  branchKey: string | null,
+  claimed: string[] | undefined,
+): Promise<string[]> {
+  const step = ctx.resolved.tree.byKey[stepKey];
+  const slots = step?.step.attachments ?? [];
+  if (!slots.length) return claimed ?? [];
+  const instance = await tx.featureStepInstance.findFirst({
+    where: { recordId: ctx.record.id, stepKey, branchKey, status: "active" },
+    orderBy: { sequence: "desc" },
+    select: { id: true },
+  });
+  const links = await tx.documentLink.findMany({
+    where: {
+      slotKey: { in: slots.map((slot) => slot.slotKey) },
+      OR: [
+        { subjectType: "feature_record", subjectId: ctx.record.id },
+        ...(instance
+          ? [{ subjectType: "feature_step_instance" as const, subjectId: instance.id }]
+          : []),
+      ],
+    },
+    select: { slotKey: true },
+  });
+  return Array.from(new Set([...(claimed ?? []), ...links.map((link) => link.slotKey)]));
 }
 
 async function dynamicPersonsFor(
@@ -132,6 +194,8 @@ export interface AvailableAction {
   requiresComment: boolean;
   confirm?: { title: string; message: string };
   allowed: boolean;
+  /** Allowed to act on this step at all — the inputs may still be missing. */
+  actorAllowed: boolean;
   reason?: string;
 }
 
@@ -159,6 +223,7 @@ export async function availableActions(
       requiresComment: action.requiredComment,
       ...(action.confirm ? { confirm: action.confirm } : {}),
       allowed: available.enabled,
+      actorAllowed: available.actorAllowed,
       ...(available.disabledReason ? { reason: available.disabledReason } : {}),
     });
   }

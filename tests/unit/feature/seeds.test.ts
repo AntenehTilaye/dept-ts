@@ -6,6 +6,8 @@ import { simulate } from "@/platform/feature/simulate";
 import { errorsOnly, validateDefinition } from "@/platform/feature/validate";
 import { SEED_FEATURES } from "../../../prisma/seed/features";
 import { caseFeature } from "../../../prisma/seed/features/case";
+import { committee } from "../../../prisma/seed/features/committee";
+import { committeeReport } from "../../../prisma/seed/features/committee_report";
 import { genericRequest } from "../../../prisma/seed/features/generic_request";
 import { task } from "../../../prisma/seed/features/task";
 
@@ -26,6 +28,14 @@ const ADAPTERS: Record<string, string> = {
   "import.commit": "effect",
   "import.noRowsInError": "guard",
   "import.actorMayCommit": "guard",
+  "committee.backing": "backing",
+  "committee_report.backing": "backing",
+  "committee.chairIsMember": "guard",
+  "committee.memberGuard": "guard",
+  "committee.syncGroupStatus": "effect",
+  "committee.completeReportedTasks": "effect",
+  "committee.escalateIssueToCase": "effect",
+  "committee_report.setSubmittedAt": "effect",
 };
 
 describe("the seeded features", () => {
@@ -111,6 +121,63 @@ describe("the seeded features", () => {
     expect(locks).toContain("/record/backing");
     expect(locks).toContain("/steps/1/adapter");
     expect(locks).toContain("/presets/general/fieldDefaults");
+  });
+
+  it("compiles `committee` into the life of a committee, not a paperwork trail", () => {
+    const compiled = compile(committee, { isSystem: true });
+    expect(compiled.workflow.states.map((s) => s.key)).toEqual([
+      "setup",
+      "active",
+      "inactive",
+      "dissolved",
+      "abandoned",
+    ]);
+    // a committee that was wound up did its job; one that was never constituted did not
+    const terminals = Object.fromEntries(
+      committee.terminalStates.map((t) => [t.key, t.category]),
+    );
+    expect(terminals).toEqual({ dissolved: "success", abandoned: "cancelled" });
+    // the group follows the record, so every transition that changes "is it at work" says so
+    for (const key of ["setup.activate", "active.deactivate", "inactive.reactivate"]) {
+      const transition = compiled.workflow.transitions.find((t) => t.key === key)!;
+      expect(transition.effects.some((e) => e.kind === "invokeHandler")).toBe(true);
+    }
+    expect(compiled.workflow.transitions.find((t) => t.key === "setup.activate")!.guards).toContain(
+      "committee.chairIsMember",
+    );
+  });
+
+  it("compiles `committee_report` into a review loop that leans on the committee's membership", () => {
+    const compiled = compile(committeeReport, { isSystem: true });
+    expect(compiled.workflow.states.map((s) => s.key)).toEqual([
+      "draft",
+      "submitted",
+      "reviewed",
+      "revision_required",
+      "approved",
+    ]);
+    // one work item per leaf step, and the draft is the step somebody is nudged about
+    expect(Object.keys(compiled.taskTemplates).sort()).toEqual([
+      "draft",
+      "reviewed",
+      "revision_required",
+      "submitted",
+    ]);
+    expect(Object.keys(compiled.reminderTemplates)).toEqual(["draft"]);
+    // the person who writes it is whoever is on the committee, which is a derived grant
+    expect(compiled.grantRequirements).toContainEqual({
+      stepKey: "draft",
+      roleKey: "committee_member",
+      scopeType: "committee",
+      derivedFrom: "parent_member",
+    });
+    const keys = compiled.permissionKeys;
+    expect(keys).toContain("committee.report.submit");
+    expect(keys).toContain("committee.manage");
+    // a revision returns to the same step the head is waiting on, never to a new one
+    expect(
+      compiled.workflow.transitions.find((t) => t.key === "revision_required.resubmit")!.to,
+    ).toBe("submitted");
   });
 
   it("hashes each built-in's locked subtree stably", () => {

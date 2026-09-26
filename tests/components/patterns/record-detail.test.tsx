@@ -16,6 +16,8 @@ const actions: AvailableAction[] = [
     requiredFields: [],
     requiredAttachments: [],
     enabled: false,
+    // allowed to submit, but not until the deliverable is there
+    actorAllowed: true,
     disabledReason: "Missing required deliverable(s): Final report",
   },
   {
@@ -27,6 +29,7 @@ const actions: AvailableAction[] = [
     requiredFields: [],
     requiredAttachments: [],
     enabled: true,
+    actorAllowed: true,
   },
 ];
 

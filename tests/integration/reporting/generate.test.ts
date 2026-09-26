@@ -8,6 +8,7 @@ import { LocalDiskStorage, setStorage } from "@/lib/storage";
 import type { Actor } from "@/platform/identity/can";
 import {
   generate,
+  listReports,
   ReportForbiddenError,
   runGeneration,
   seedReportDefinitions,
@@ -53,7 +54,12 @@ afterAll(async () => {
 describe("generating a report", () => {
   it("mirrors the registry into report_definition so a page can list what exists", async () => {
     const rows = await migratorDb.reportDefinition.findMany({ orderBy: { key: "asc" } });
-    expect(rows.map((r) => r.key)).toEqual(["audit_extract", "department_activity", "task_list"]);
+    // the framework's own three; every module that registers a report adds to this list, so the
+    // assertion is about the mirroring rather than about how many modules exist today
+    expect(rows.map((r) => r.key)).toEqual(
+      expect.arrayContaining(["audit_extract", "department_activity", "task_list"]),
+    );
+    expect(rows.map((r) => r.key)).toEqual(listReports().map((r) => r.key).sort());
     const activity = rows.find((r) => r.key === "department_activity")!;
     expect(activity.supportedFormats).toContain("pdf");
     expect(activity.requiredPermission).toBe("task.view");
