@@ -172,11 +172,13 @@ describe("courses, offerings, resources and timetable", () => {
       const teacher = await f.staff(tx, DEPT_CS);
       const s = await f.section(tx, DEPT_CS);
       const { offering, sectionOfferings } = await f.offering(tx, DEPT_CS, { sectionIds: [s.id] });
+      // naming a coordinator on an offering that exists is an update, not a second offering
       const updated = await ensureOffering(tx, DEPT_CS, {
         courseId: offering.courseId,
         termId: offering.termId,
         coordinatorPersonId: teacher.id,
       });
+      expect(updated.id).toBe(offering.id);
       expect(updated.coordinatorPersonId).toBe(teacher.id);
       await assignTeaching(tx, DEPT_CS, {
         sectionOfferingId: sectionOfferings[0]!.id,

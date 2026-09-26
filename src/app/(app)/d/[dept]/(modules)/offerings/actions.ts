@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { safeAction } from "@/lib/actions/safe-action";
+import { actorOf } from "@/lib/auth/require";
 import { formToObject } from "@/lib/actions/form";
 import { offeringSchema, teachingSchema } from "@/platform/academic/schemas";
-import { ensureOffering, ensureSectionOffering } from "@/platform/academic/offerings";
+import { ensureSectionOffering } from "@/platform/academic/offerings";
+import { provisionOffering } from "@/modules/assessment/provision";
 import { assignTeaching, endTeaching } from "@/platform/academic/teaching";
 import { enrollSectionMembers } from "@/platform/academic/enrollment";
 
@@ -14,7 +16,8 @@ const PERMISSION = { permission: "academic.manage" };
 export const createOfferingAction = safeAction(
   offeringSchema,
   async ({ input, ctx, db }) => {
-    const offering = await ensureOffering(db, ctx.departmentId, input);
+    // an offering IS a course_offering record, so creating one starts its process
+    const offering = await provisionOffering(db, ctx.departmentId, actorOf(ctx), input);
     revalidatePath(`/d/${ctx.deptSlug}/offerings`);
     return { id: offering.id };
   },

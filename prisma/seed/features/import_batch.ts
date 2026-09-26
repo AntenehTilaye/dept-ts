@@ -8,12 +8,19 @@ import type { FeatureDefinitionInput, StepDefInput } from "../../../src/platform
 // assessment and attendance presets arrive with the portfolio phase, which changes the locked
 // `/presets/*` subtree and therefore reaches an installation as a seed upgrade.
 
+/** Who may work on an import, whatever it is of: its owner, or somebody who manages imports. */
+const WORKERS: StepDefInput["actions"][number]["actors"] = [
+  { type: "creator" },
+  { type: "permission", key: "import.manage" },
+  { type: "permission", key: "assessment.import" },
+];
+
 const discard = (): StepDefInput["actions"][number] => ({
   key: "discard",
   label: "Discard",
   kind: "cancel",
   to: "discarded",
-  actors: [{ type: "creator" }, { type: "permission", key: "import.manage" }],
+  actors: WORKERS,
   requiredComment: false,
 });
 
@@ -22,6 +29,19 @@ const step = (s: StepDefInput): StepDefInput => ({ ...s, actions: [...s.actions,
 const PRESETS = [
   ["roster", "Section roster", "section", "Students of one section for the year."],
   ["class_timetable", "Class timetable", "term", "Weekly slots for a whole term."],
+  [
+    "assessment",
+    "Marks",
+    "section_offering",
+    "One row per student, one column per assessment component of the section.",
+  ],
+  [
+    "attendance",
+    "Attendance",
+    "section_offering",
+    "How many sessions each student of the section attended.",
+  ],
+  ["students", "Students", "term", "An intake list: new students of a programme."],
 ] as const;
 
 export const importBatch: FeatureDefinitionInput = {
@@ -77,6 +97,9 @@ export const importBatch: FeatureDefinitionInput = {
     canCreate: [
       { type: "role", roles: ["department_head", "deputy_head"] },
       { type: "permission", key: "import.manage" },
+      // a section's marks are the business of whoever teaches it; which section they may write
+      // into is settled by `import.actorMayCommit`, not by being allowed to start an import
+      { type: "permission", key: "assessment.import" },
     ],
     ownerRule: { type: "creator" },
     backing: { kind: "module", adapter: "import_batch.backing" },
@@ -109,7 +132,7 @@ export const importBatch: FeatureDefinitionInput = {
           label: "Read the file",
           kind: "custom",
           to: "$next",
-          actors: [{ type: "creator" }, { type: "permission", key: "import.manage" }],
+          actors: WORKERS,
           effects: ["import.parse"],
         },
       ],
@@ -128,7 +151,7 @@ export const importBatch: FeatureDefinitionInput = {
           label: "Check the rows",
           kind: "custom",
           to: "$next",
-          actors: [{ type: "creator" }, { type: "permission", key: "import.manage" }],
+          actors: WORKERS,
           effects: ["import.validate"],
         },
       ],
@@ -147,8 +170,8 @@ export const importBatch: FeatureDefinitionInput = {
           label: "Commit",
           kind: "approve",
           to: "committed",
-          actors: [{ type: "creator" }, { type: "permission", key: "import.manage" }],
-          guards: ["import.noRowsInError", "import.actorMayCommit"],
+          actors: WORKERS,
+          guards: ["import.noRowsInError", "import.actorMayCommit", "import.sectionNotLocked"],
           effects: ["import.commit"],
           confirm: {
             title: "Commit this import?",
@@ -160,7 +183,7 @@ export const importBatch: FeatureDefinitionInput = {
           label: "Check again",
           kind: "custom",
           to: "validated",
-          actors: [{ type: "creator" }, { type: "permission", key: "import.manage" }],
+          actors: WORKERS,
           effects: ["import.validate"],
         },
       ],
@@ -205,7 +228,8 @@ export const importBatch: FeatureDefinitionInput = {
     defaults: {
       department_head: "manage",
       deputy_head: "manage",
-      instructor: "view",
+      // an instructor imports the marks of the sections they teach and sees no others
+      instructor: "own",
     },
   },
 };

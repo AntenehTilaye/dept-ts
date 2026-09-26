@@ -32,7 +32,9 @@ model ImportBatch {
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
 
-  rows ImportRow[]
+  rows                ImportRow[]
+  assessmentRecords   AssessmentRecord[]
+  attendanceSummaries StudentAttendanceSummary[]
 
   @@index([contextType, contextId, kind])
   @@index([departmentId, kind])

@@ -76,3 +76,69 @@ export const TIMETABLE_OVERLAP: SheetData = {
     ["CS202", "CS-Y2-A", 2, "10:00", "12:00", "B12", "instructor1.cs@deptts.local", "all"],
   ],
 };
+
+// ---- assessment ------------------------------------------------------------------------------
+// The scheme these are marked against is Quiz out of 10, Mid-semester out of 30, Final out of 60.
+// The headers are spelled the way a marker's own workbook spells them, which the aliases see
+// through. The student numbers are the demo department's own (`prisma/seed/demo/people.ts`), and
+// all three belong to the same section — the demo alternates students between two sections, so a
+// sheet mixing them would be half strangers wherever it was uploaded.
+
+/** Marks everything in which is fine, including one student who did not sit the final. */
+export const ASSESSMENT_VALID: SheetData = {
+  name: "Marks",
+  headers: ["Student number", "Full name", "Quiz", "Mid-semester", "Final"],
+  rows: [
+    ["CS/2001/24", "Rep Student", 9, 24, 48],
+    ["CS/2003/24", "Student 03", 6, 18, 33],
+    ["CS/2005/24", "Student 05", 8, 21, null],
+  ],
+};
+
+/**
+ * The same sheet with one of each problem a real one arrives with: the same student twice, a mark
+ * that is not a number, a mark above the maximum, a name that disagrees with the roster, and a
+ * student who is not in the section at all.
+ */
+export const ASSESSMENT_ERRORS: SheetData = {
+  name: "Sheet1",
+  headers: ["ID No.", "Student Name", "Quiz", "Mid", "Final"],
+  rows: [
+    ["CS/2001/24", "Rep Student", 9, 24, 48],
+    ["CS/2001/24", "R. Student", 9, 24, 48],
+    ["CS/2003/24", "Student 03", "absent", 18, 33],
+    ["CS/2005/24", "Somebody Else", 8, 44, 40],
+    ["CS/9999/24", "Nobody Here", 5, 15, 30],
+  ],
+};
+
+/** Attendance that is fine, and one row that claims more sessions attended than were held. */
+export const ATTENDANCE_VALID: SheetData = {
+  name: "Attendance",
+  headers: ["Student number", "Full name", "Sessions held", "Sessions attended"],
+  rows: [
+    ["CS/2001/24", "Rep Student", 28, 28],
+    ["CS/2003/24", "Student 03", 28, 14],
+    ["CS/2005/24", "Student 05", 28, 21],
+  ],
+};
+
+export const ATTENDANCE_ERRORS: SheetData = {
+  name: "Attendance",
+  headers: ["Student number", "Full name", "Held", "Present"],
+  rows: [
+    ["CS/2001/24", "Rep Student", 28, 30],
+    ["CS/2003/24", "Student 03", 28, -1],
+  ],
+};
+
+/** An intake list: two students the department has not met, one it has. */
+export const STUDENTS_VALID: SheetData = {
+  name: "Students",
+  headers: ["Student number", "Full name", "Email", "Programme", "Admission year"],
+  rows: [
+    ["CS/3001/25", "Feven Alemu", "feven@student.local", "BSC-CS", 2025],
+    ["CS/3002/25", "Girma Tesfaye", "girma@student.local", "BSC-CS", 2025],
+    ["CS/2001/24", "Rep Student", "rep.cs@deptts.local", "BSC-CS", 2024],
+  ],
+};

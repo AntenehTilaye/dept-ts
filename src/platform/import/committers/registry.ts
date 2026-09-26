@@ -25,7 +25,27 @@ export type Committer = (
   rows: Record<string, unknown>[],
 ) => Promise<CommitSummary>;
 
+/**
+ * Who may commit a kind of file. The default is "whoever may manage imports", but a kind whose
+ * rows belong to somebody in particular — a section's marks belong to the person teaching it —
+ * registers its own rule, and the commit guard asks that instead.
+ */
+export type CommitAuthority = (ctx: {
+  tx: Db;
+  actor: Actor;
+  context?: { subjectType: string; subjectId: string } | null;
+}) => Promise<true | { ok: false; reason: string }>;
+
 const committers = globalSingleton("import-committers", () => new Map<string, Committer>());
+const authorities = globalSingleton("import-commit-authorities", () => new Map<string, CommitAuthority>());
+
+export function registerCommitAuthority(kind: string, authority: CommitAuthority): void {
+  authorities.set(kind, authority);
+}
+
+export function commitAuthority(kind: string): CommitAuthority | undefined {
+  return authorities.get(kind);
+}
 
 export function registerCommitter(kind: string, committer: Committer): void {
   committers.set(kind, committer);

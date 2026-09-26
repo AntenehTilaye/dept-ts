@@ -17,6 +17,7 @@ import overdueSweep from "./handlers/overdue-sweep";
 import reminderFire from "./handlers/reminder-fire";
 import reportGenerate from "./handlers/report-generate";
 import searchReindex from "./handlers/search-reindex";
+import snapshotCompute from "./handlers/snapshot-compute";
 import recurrenceSpawn from "./handlers/recurrence-spawn";
 import reminderMaterialize from "./handlers/reminder-materialize";
 import retentionRun from "./handlers/retention-run";
@@ -37,6 +38,7 @@ export const HANDLERS: readonly WorkerHandler[] = [
   importValidate,
   reportGenerate,
   searchReindex,
+  snapshotCompute,
   projectionRebuild,
   overdueSweep,
   calendarAutotransition,

@@ -2,6 +2,7 @@ import { seedFeatures as seedFeatureDefinitions } from "../../../src/platform/fe
 import { caseFeature } from "./case";
 import { committee } from "./committee";
 import { committeeReport } from "./committee_report";
+import { courseOffering } from "./course_offering";
 import { genericRequest } from "./generic_request";
 import { importBatch } from "./import_batch";
 import { task } from "./task";
@@ -22,6 +23,7 @@ export const SEED_FEATURES = [
   importBatch,
   committee,
   committeeReport,
+  courseOffering,
 ];
 
 export async function seedFeatures(): Promise<void> {

@@ -155,6 +155,14 @@ export const QUEUES: readonly QueueSpec[] = [
     retryLimit: 1,
     expireInSeconds: 900,
   },
+  // recomputing a section's results and its figures after marks were committed: one section at a
+  // time, because two runs over the same marks would write the same rows twice for nothing
+  {
+    name: "snapshot.compute",
+    policy: "singleton",
+    retryLimit: 2,
+    expireInSeconds: 900,
+  },
   {
     name: "retention.run",
     policy: "short",

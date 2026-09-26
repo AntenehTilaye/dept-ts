@@ -2,6 +2,7 @@ import { getDb } from "./db/scoped";
 import { setBypassAuditor } from "./db/tenant";
 import type { Db } from "./db/types";
 import { installGrantSubscribers } from "@/platform/audit/subscribers";
+import { currentAudit } from "@/platform/audit/context";
 import { record } from "@/platform/audit/record";
 import { setSubjectResolver } from "@/platform/identity/can";
 import { dbPolicyStore } from "@/platform/identity/policy-store";
@@ -50,7 +51,18 @@ export function bootstrap(): void {
   registerAvailabilitySubjects();
   registerImportSubjects();
   registerReportingSubjects();
-  setSubjectResolver(resolverWith((departmentId) => getDb(departmentId) as unknown as Db));
+  // A permission check inside a transaction has to see that transaction's own writes: creating a
+  // record and then acting on it is one request, and asking a second connection about a row the
+  // first has not committed yet answers "it is not there" — which reads as "you are not allowed".
+  // So the resolver prefers the ambient department transaction and falls back to its own client.
+  setSubjectResolver(
+    resolverWith((departmentId) => {
+      const ambient = currentAudit();
+      return ambient?.tx && ambient.departmentId === departmentId
+        ? (ambient.tx as Db)
+        : (getDb(departmentId) as unknown as Db);
+    }),
+  );
   setEnginePolicyStore(dbPolicyStore);
   installGrantSubscribers();
   installSchedulerEffects();

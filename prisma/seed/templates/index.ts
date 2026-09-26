@@ -1,11 +1,16 @@
 import type { PrismaClient } from "../../../src/generated/prisma/client";
 import { validateBody } from "../../../src/platform/template/mustache-safe";
 import { SEED_TEMPLATES as KERNEL_TEMPLATES } from "./catalogue";
+import { ASSESSMENT_TEMPLATES } from "./assessment";
 import { COMMITTEE_TEMPLATES } from "./committee";
 
 // The kernel's own keys plus every module's. A module owns its keys outright: nothing here
 // merges two sources for one key, so a duplicate would be a bug the seed test catches.
-export const SEED_TEMPLATES = [...KERNEL_TEMPLATES, ...COMMITTEE_TEMPLATES];
+export const SEED_TEMPLATES = [
+  ...KERNEL_TEMPLATES,
+  ...COMMITTEE_TEMPLATES,
+  ...ASSESSMENT_TEMPLATES,
+];
 
 /** Seeds the faculty templates (version 1, active); refreshes v1 in place while it is the active one. */
 export async function seedTemplates(db: PrismaClient) {

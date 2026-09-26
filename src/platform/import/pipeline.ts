@@ -6,7 +6,7 @@ import type { Actor } from "../identity/can";
 import { commitRows } from "./committers/registry";
 import { applyMapping, resolveMapping, type MappingProfileInput } from "./mapping";
 import { parseFile, type ParsedSheet } from "./parse";
-import { kindSpec } from "./templates";
+import { columnsFor } from "./templates";
 import { validateRows, type RowVerdict } from "./validators/registry";
 
 // The staged pipeline: read, map, validate, look at it, fix what is wrong, commit. Each stage
@@ -155,12 +155,26 @@ export async function storeManualRows(
 
 async function storeRows(
   tx: Db,
-  batch: { id: string; departmentId: string; kind: string },
+  batch: {
+    id: string;
+    departmentId: string;
+    kind: string;
+    contextType?: string | null;
+    contextId?: string | null;
+  },
   sheet: ParsedSheet,
   profile: MappingProfileInput | null,
 ): Promise<BatchSummary> {
-  const spec = kindSpec(batch.kind);
-  const mapping = resolveMapping(sheet.headers, spec.columns, profile ?? undefined);
+  // some kinds only know their columns once they know what the batch is about: a mark sheet has one
+  // column per assessment component of the section
+  const columns = await columnsFor(
+    batch.kind,
+    tx,
+    batch.contextType && batch.contextId
+      ? { subjectType: batch.contextType, subjectId: batch.contextId }
+      : null,
+  );
+  const mapping = resolveMapping(sheet.headers, columns, profile ?? undefined);
 
   await tx.importRow.deleteMany({ where: { batchId: batch.id } });
   for (const [index, row] of sheet.rows.entries()) {
@@ -215,6 +229,9 @@ export async function validateBatch(tx: Db, batchId: string): Promise<BatchSumma
   let errors = 0;
   let warnings = 0;
   for (const [index, row] of rows.entries()) {
+    // a row somebody has deliberately left out is not judged again: re-validating it would hand
+    // back the very errors they left it out for, and the commit would stay blocked for ever
+    if (row.disposition === "skip") continue;
     const verdict: RowVerdict = verdicts[index] ?? { errors: [], warnings: [] };
     errors += verdict.errors.length ? 1 : 0;
     warnings += verdict.warnings.length ? 1 : 0;

@@ -1,6 +1,9 @@
 import type { PrismaClient } from "../../../src/generated/prisma/client";
 import { upsertCourse } from "../../../src/platform/academic/courses";
-import { ensureOffering, ensureSectionOffering } from "../../../src/platform/academic/offerings";
+import { ensureSectionOffering } from "../../../src/platform/academic/offerings";
+import { provisionOffering } from "../../../src/modules/assessment/provision";
+import { withTenantTx } from "../../../src/lib/db/tenant";
+import { runWithAudit } from "../../../src/platform/audit/context";
 import { assignTeaching } from "../../../src/platform/academic/teaching";
 import { enrollSectionMembers } from "../../../src/platform/academic/enrollment";
 import { upsertTimetableSlots } from "../../../src/platform/academic/timetable";
@@ -35,6 +38,33 @@ export async function seedDemoCourses(
   ctx: { program: { id: string }; sections: string[]; staffPersons: Map<string, string> },
 ) {
   const departmentId = "dep_cs";
+  // an offering is a record of the `course_offering` feature, so the demo creates one the way a
+  // department does — through the runtime, as the head
+  const head = await db.person.findFirst({ where: { email: "dh.cs@deptts.local" } });
+  const actor = {
+    userId: head?.userId ?? "system",
+    personId: head?.id ?? null,
+    departmentId,
+    isAdmin: false,
+  };
+  const offeringOf = async (input: {
+    courseId: string;
+    termId: string;
+    coordinatorPersonId?: string;
+    running?: boolean;
+  }) =>
+    runWithAudit(
+      { departmentId, actorUserId: actor.userId, correlationId: "seed:demo-offering" },
+      () =>
+        withTenantTx(departmentId, (tx) =>
+          provisionOffering(tx, departmentId, actor, {
+            courseId: input.courseId,
+            termId: input.termId,
+            coordinatorPersonId: input.coordinatorPersonId ?? null,
+            advanceTo: input.running === false ? "planned" : "running",
+          }),
+        ),
+    );
   const courses = new Map<string, string>();
   for (const c of DEMO_COURSES) {
     let course = await db.course.findUnique({
@@ -95,7 +125,7 @@ export async function seedDemoCourses(
   ];
   const slots: Parameters<typeof upsertTimetableSlots>[3] = [];
   for (const [i, p] of plan.entries()) {
-    const offering = await ensureOffering(db, departmentId, {
+    const offering = await offeringOf({
       courseId: courses.get(p.code)!,
       termId: term.id,
       coordinatorPersonId: ctx.staffPersons.get(p.coordinator),
@@ -135,7 +165,7 @@ export async function seedDemoCourses(
   const prevTerm = await db.term.findUniqueOrThrow({
     where: { academicYearId_ordinal: { academicYearId: prevYear.id, ordinal: "first" } },
   });
-  const prevOffering = await ensureOffering(db, departmentId, {
+  const prevOffering = await offeringOf({
     courseId: courses.get("CS200")!,
     termId: prevTerm.id,
     coordinatorPersonId: ctx.staffPersons.get("instructor1.cs"),

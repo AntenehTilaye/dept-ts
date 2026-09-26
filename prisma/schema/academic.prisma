@@ -42,6 +42,7 @@ model Term {
   timetableSlots     ClassTimetableSlot[]
   campaigns          Campaign[]
   availabilityBlocks AvailabilityBlock[]
+  metricsSnapshots   CourseMetricsSnapshot[]
 
   @@unique([academicYearId, ordinal])
   @@index([departmentId, status])
@@ -90,8 +91,9 @@ model Course {
   @@map("course")
 }
 
-/// A course taught in a term. `featureRecordId` becomes NOT NULL when the course_offering
-/// feature is seeded (assessment phase); `schemeStructureLockedAt` is a derived cache. TENANT.
+/// A course taught in a term. Every offering is a `course_offering` record — the backfill in the
+/// seed gave the ones that predate the feature theirs, which is why `featureRecordId` is NOT NULL
+/// from the assessment phase on. `schemeStructureLockedAt` is a derived cache. TENANT.
 model CourseOffering {
   id                      String     @id @default(cuid())
   departmentId            String     @map("department_id")
@@ -102,13 +104,15 @@ model CourseOffering {
   term                    Term       @relation(fields: [termId], references: [id], onDelete: Restrict)
   coordinatorPersonId     String?    @map("coordinator_person_id")
   coordinator             Person?    @relation("OfferingCoordinator", fields: [coordinatorPersonId], references: [id], onDelete: SetNull)
-  featureRecordId         String?    @unique @map("feature_record_id")
+  featureRecordId         String     @unique @map("feature_record_id")
   decisionNote            String?    @map("decision_note")
   schemeStructureLockedAt DateTime?  @map("scheme_structure_locked_at")
   createdAt               DateTime   @default(now()) @map("created_at")
   updatedAt               DateTime   @updatedAt @map("updated_at")
 
-  sectionOfferings SectionOffering[]
+  sectionOfferings  SectionOffering[]
+  assessmentSchemes AssessmentScheme[]
+  metricsSnapshots  CourseMetricsSnapshot[]
 
   @@unique([courseId, termId])
   @@index([termId])
@@ -133,6 +137,11 @@ model SectionOffering {
   teachingAssignments TeachingAssignment[]
   enrollments         Enrollment[]
   timetableSlots      ClassTimetableSlot[]
+  assessmentSchemes   AssessmentScheme[]
+  assessmentRecords   AssessmentRecord[]
+  attendanceSummaries StudentAttendanceSummary[]
+  courseResults       StudentCourseResult[]
+  metricsSnapshots    CourseMetricsSnapshot[]
 
   @@unique([courseOfferingId, sectionId])
   @@index([sectionId])

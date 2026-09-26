@@ -1,1 +1,162 @@
-// portfolio models arrive in their phase (see docs/design/00-plan.md). Kept so later phases only add models.
+// Assessment and course metrics (design part 04 §20, the assessment half; Portfolio, CQIReport
+// and CQIItem follow in their own phase). What a department actually wants to know about a course
+// — how the marks were distributed, who passed, which component everybody struggled with — is
+// arithmetic over marks somebody typed once. So the marks are stored as they were read, the
+// results and the metrics are derived and recomputable, and a snapshot the department has
+// reported on is frozen so the number it published cannot quietly change. All TENANT.
+
+/// How a course is marked: the components and their weights, for the offering as a whole or for
+/// one section that does it differently. TENANT.
+model AssessmentScheme {
+  id                String           @id @default(cuid())
+  departmentId      String           @map("department_id")
+  department        Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  courseOfferingId  String           @map("course_offering_id")
+  courseOffering    CourseOffering   @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  /// Null for the offering's own scheme; set for a section that overrides it.
+  sectionOfferingId String?          @map("section_offering_id")
+  sectionOffering   SectionOffering? @relation(fields: [sectionOfferingId], references: [id], onDelete: Cascade)
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  components AssessmentComponent[]
+
+  @@unique([courseOfferingId, sectionOfferingId])
+  @@index([departmentId])
+  @@map("assessment_scheme")
+}
+
+/// One thing students are marked on: a quiz, the mid-semester, the final. TENANT.
+model AssessmentComponent {
+  id           String           @id @default(cuid())
+  departmentId String           @map("department_id")
+  department   Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  schemeId     String           @map("scheme_id")
+  scheme       AssessmentScheme @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+  /// Stable within the scheme; the column of an imported workbook is matched to it.
+  key          String
+  name         String
+  maxMark      Decimal          @map("max_mark") @db.Decimal(6, 2)
+  weightPercent Decimal         @map("weight_percent") @db.Decimal(5, 2)
+  order        Int
+  /// The final examination: a course cannot be completed without it.
+  isFinal      Boolean          @default(false) @map("is_final")
+  /// The offering-level component a section override stands for, so the two can be consolidated.
+  offeringComponentId String?   @map("offering_component_id")
+  /// A section-only component (a make-up test) that the course-level figures leave out.
+  excludedFromConsolidation Boolean @default(false) @map("excluded_from_consolidation")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  records AssessmentRecord[]
+
+  @@unique([schemeId, key])
+  @@index([departmentId])
+  @@map("assessment_component")
+}
+
+/// One student's mark for one component, as it was imported. TENANT.
+model AssessmentRecord {
+  id                String              @id @default(cuid())
+  departmentId      String              @map("department_id")
+  department        Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  sectionOfferingId String              @map("section_offering_id")
+  sectionOffering   SectionOffering     @relation(fields: [sectionOfferingId], references: [id], onDelete: Cascade)
+  studentId         String              @map("student_id")
+  student           Student             @relation(fields: [studentId], references: [personId], onDelete: Cascade)
+  componentId       String              @map("component_id")
+  component         AssessmentComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  mark              Decimal?            @db.Decimal(6, 2)
+  /// The cell was empty rather than zero: the student did not sit it.
+  isMissing         Boolean             @default(false) @map("is_missing")
+  /// Which import wrote this row; replacing a batch replaces its rows.
+  importBatchId     String              @map("import_batch_id")
+  importBatch       ImportBatch         @relation(fields: [importBatchId], references: [id], onDelete: Restrict)
+  rowVersion        Int                 @default(1) @map("row_version")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  @@unique([sectionOfferingId, studentId, componentId])
+  @@index([importBatchId])
+  @@index([departmentId])
+  @@map("assessment_record")
+}
+
+/// How much of the course one student was present for. TENANT.
+model StudentAttendanceSummary {
+  sectionOfferingId String          @map("section_offering_id")
+  sectionOffering   SectionOffering @relation(fields: [sectionOfferingId], references: [id], onDelete: Cascade)
+  studentId         String          @map("student_id")
+  student           Student         @relation(fields: [studentId], references: [personId], onDelete: Cascade)
+  departmentId      String          @map("department_id")
+  department        Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  sessionsHeld      Int             @map("sessions_held")
+  sessionsAttended  Int             @map("sessions_attended")
+  importBatchId     String          @map("import_batch_id")
+  importBatch       ImportBatch     @relation(fields: [importBatchId], references: [id], onDelete: Restrict)
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  @@id([sectionOfferingId, studentId])
+  @@index([departmentId])
+  @@map("student_attendance_summary")
+}
+
+/// What one student ended up with: derived from the marks and the programme's grade scale, and
+/// rewritten whenever either changes. TENANT.
+model StudentCourseResult {
+  sectionOfferingId    String          @map("section_offering_id")
+  sectionOffering      SectionOffering @relation(fields: [sectionOfferingId], references: [id], onDelete: Cascade)
+  studentId            String          @map("student_id")
+  student              Student         @relation(fields: [studentId], references: [personId], onDelete: Cascade)
+  departmentId         String          @map("department_id")
+  department           Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  total                Decimal         @db.Decimal(6, 2)
+  letterGrade          String          @map("letter_grade")
+  outcome              Outcome
+  /// Which scale produced the letter, so a later change of scale is visible rather than silent.
+  gradeScaleKey        String          @map("grade_scale_key")
+  computedAt           DateTime        @map("computed_at")
+  sourceImportBatchId  String          @map("source_import_batch_id")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+
+  @@id([sectionOfferingId, studentId])
+  @@index([departmentId])
+  @@map("student_course_result")
+}
+
+/// The figures for one section or one whole offering at a moment in time. `frozen` is what the
+/// department reported on: a trigger refuses any update to a frozen row. TENANT.
+model CourseMetricsSnapshot {
+  id                    String           @id @default(cuid())
+  departmentId          String           @map("department_id")
+  department            Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  courseOfferingId      String           @map("course_offering_id")
+  courseOffering        CourseOffering   @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  /// Null for the offering-level snapshot consolidated from its sections.
+  sectionOfferingId     String?          @map("section_offering_id")
+  sectionOffering       SectionOffering? @relation(fields: [sectionOfferingId], references: [id], onDelete: Cascade)
+  termId                String           @map("term_id")
+  term                  Term             @relation(fields: [termId], references: [id], onDelete: Cascade)
+  averageMark           Decimal?         @map("average_mark") @db.Decimal(6, 2)
+  passRate              Decimal?         @map("pass_rate") @db.Decimal(5, 4)
+  failRate              Decimal?         @map("fail_rate") @db.Decimal(5, 4)
+  /// { "A": 4, "B": 11, … } over the letters the scale defines.
+  gradeDistributionJson Json             @map("grade_distribution_json")
+  /// Per component: how many were marked, the average, the spread, how many are missing.
+  componentStatsJson    Json             @map("component_stats_json")
+  completionRate        Decimal?         @map("completion_rate") @db.Decimal(5, 4)
+  attendanceRate        Decimal?         @map("attendance_rate") @db.Decimal(5, 4)
+  studentCount          Int              @map("student_count")
+  computedAt            DateTime         @map("computed_at")
+  /// Hash of the marks the figures came from; an unchanged hash means no recomputation is needed.
+  sourceHash            String           @map("source_hash")
+  frozen                Boolean          @default(false)
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+
+  @@index([courseOfferingId, sectionOfferingId, computedAt])
+  @@index([departmentId])
+  @@map("course_metrics_snapshot")
+}
